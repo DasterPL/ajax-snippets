@@ -1,0 +1,134 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: AJAX Snippets\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-15 00:00+0000\n"
+"PO-Revision-Date: 2026-01-15 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: pl_PL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
+"X-Generator: manual\n"
+
+msgid "Ajax Snippets"
+msgstr "Ajax Snippets"
+
+msgid "Ajax Snippets Batch"
+msgstr "Ajax Snippets Batch"
+
+msgid "Batch Runner"
+msgstr "Batch Runner"
+
+msgid "Status: Waiting"
+msgstr "Status: Oczekiwanie"
+
+msgid "Status:"
+msgstr "Status:"
+
+msgid "Cancel"
+msgstr "Anuluj"
+
+msgid "Run"
+msgstr "Wykonaj"
+
+msgid "Templates"
+msgstr "Szablony"
+
+msgid "Fetch data"
+msgstr "Pobierz dane"
+
+msgid "Start batch"
+msgstr "Start batch"
+
+msgid "Pause"
+msgstr "Pauza"
+
+msgid "Resume"
+msgstr "Wznów"
+
+msgid "Items / AJAX"
+msgstr "Elementów / AJAX"
+
+msgid "Templates: fetch data"
+msgstr "Szablony: pobierz dane"
+
+msgid "Templates: batch operations"
+msgstr "Szablony: operacje batch"
+
+msgid "1) Fetch data (must return an array)"
+msgstr "1) Pobierz dane (musi zwrócić tablicę)"
+
+msgid "2) Batch operations (multiple items per AJAX)"
+msgstr "2) Operacje batch (wiele elementów na AJAX)"
+
+msgid "Available batch variables:"
+msgstr "Dostępne zmienne w batch:"
+
+msgid "current item"
+msgstr "aktualny element"
+
+msgid "index from 0"
+msgstr "indeks od 0"
+
+msgid "total items"
+msgstr "liczba elementów"
+
+msgid "full data array"
+msgstr "pełna tablica danych"
+
+msgid "Output: fetch"
+msgstr "Output: pobieranie"
+
+msgid "Output: batch"
+msgstr "Output: batch"
+
+msgid "Ajax-Snippets Version: %s"
+msgstr "Wersja Ajax-Snippets: %s"
+
+msgid "Insert at cursor (do not replace all)"
+msgstr "Wstaw w miejscu kursora (bez zamiany całości)"
+
+msgid "Insert"
+msgstr "Wstaw"
+
+msgid "Insert and run"
+msgstr "Wstaw i wykonaj"
+
+msgid "Set snippet parameters"
+msgstr "Ustaw parametry snippetu"
+
+msgid "Select..."
+msgstr "Wybierz..."
+
+msgid "Fill in:"
+msgstr "Uzupełnij:"
+
+msgid "Choose snippet"
+msgstr "Wybierz snippet"
+
+msgid "No batch data to resume."
+msgstr "Brak danych do wznowienia."
+
+msgid "Unknown error"
+msgstr "Nieznany błąd"
+
+msgid "Fetching"
+msgstr "Pobieranie"
+
+msgid "Fetched"
+msgstr "Pobrano"
+
+msgid "Processing"
+msgstr "Przetwarzanie"
+
+msgid "Done"
+msgstr "Zakończono"
+
+msgid "Fail"
+msgstr "Błąd"
+
+msgid "Paused"
+msgstr "Wstrzymano"

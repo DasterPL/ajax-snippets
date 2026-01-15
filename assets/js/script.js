@@ -5,6 +5,7 @@ jQuery(document).ready(function ($) {
     let currentRequest = null;
     let batchStop = false;
     const storagePrefix = 'ajax_snippets_';
+    const i18n = ajax_snippets_plugin_params.i18n || {};
 
     function $ajax(data) {
         return new Promise((resolve, reject) => {
@@ -26,7 +27,8 @@ jQuery(document).ready(function ($) {
         });
     }
     function changeStatus(text, color) {
-        $('.status').html(`Status: ${text}`);
+        const label = i18n.statusLabel || 'Status:';
+        $('.status').text(`${label} ${text}`);
         $('.status').css('color', color);
     }
     const getStoredValue = (key) => {
@@ -69,12 +71,12 @@ jQuery(document).ready(function ($) {
                 <div class="snippet-dialog-fields"></div>
                 <label class="snippet-dialog-option">
                     <input type="checkbox" name="insert_mode" value="1">
-                    Wstaw w miejscu kursora (zamiast zamienic calosc)
+                    ${i18n.insertAtCursor || 'Insert at cursor (do not replace all)'}
                 </label>
                 <menu class="snippet-dialog-actions">
-                    <button type="button" class="snippet-dialog-button snippet-dialog-cancel">Anuluj</button>
-                    <button type="submit" name="snippet_action" value="insert" class="snippet-dialog-button snippet-dialog-submit">Wstaw</button>
-                    <button type="submit" name="snippet_action" value="execute" class="snippet-dialog-button snippet-dialog-button-primary snippet-dialog-submit">Wstaw i wykonaj</button>
+                    <button type="button" class="snippet-dialog-button snippet-dialog-cancel">${i18n.cancel || 'Cancel'}</button>
+                    <button type="submit" name="snippet_action" value="insert" class="snippet-dialog-button snippet-dialog-submit">${i18n.insert || 'Insert'}</button>
+                    <button type="submit" name="snippet_action" value="execute" class="snippet-dialog-button snippet-dialog-button-primary snippet-dialog-submit">${i18n.insertAndRun || 'Insert and run'}</button>
                 </menu>
             </form>
         `;
@@ -89,7 +91,7 @@ jQuery(document).ready(function ($) {
         const errorEl = dialog.querySelector('.snippet-dialog-error');
         const cancelBtn = dialog.querySelector('.snippet-dialog-cancel');
         const submitBtn = dialog.querySelector('.snippet-dialog-submit');
-        titleEl.textContent = title || 'Ustaw parametry snippetu';
+        titleEl.textContent = title || (i18n.snippetDialogTitle || 'Set snippet parameters');
         fieldsEl.innerHTML = '';
         errorEl.textContent = '';
         const selectFields = [];
@@ -156,7 +158,7 @@ jQuery(document).ready(function ($) {
             const select2Options = {
                 width: '100%',
                 dropdownParent: $(dropdownParent),
-                placeholder: 'Wybierz...',
+                placeholder: i18n.selectPlaceholder || 'Select...',
                 allowClear: true,
                 dropdownAutoWidth: true,
                 templateResult: function (data) {
@@ -227,7 +229,8 @@ jQuery(document).ready(function ($) {
                     values[name] = value;
                 }
                 if (missing.length) {
-                    errorEl.textContent = `Uzupelnij: ${missing.join(', ')}`;
+                    const prefix = i18n.missingFields || 'Fill in:';
+                    errorEl.textContent = `${prefix} ${missing.join(', ')}`;
                     return;
                 }
                 const insertMode = data.get('insert_mode') === '1';
@@ -345,7 +348,7 @@ jQuery(document).ready(function ($) {
         if ($snippetTemplates.length && $.fn.select2) {
             $snippetTemplates.select2({
                 width: '100%',
-                placeholder: 'Wybierz snippet'
+                placeholder: i18n.snippetPlaceholder || 'Choose snippet'
             });
             $snippetTemplates.on('change', function () {
                 applySnippetTemplate($(this), editor, () => {
@@ -394,11 +397,11 @@ jQuery(document).ready(function ($) {
         if ($.fn.select2) {
             $batchFetchTemplates.select2({
                 width: '100%',
-                placeholder: 'Wybierz snippet'
+                placeholder: i18n.snippetPlaceholder || 'Choose snippet'
             });
             $batchProcessTemplates.select2({
                 width: '100%',
-                placeholder: 'Wybierz snippet'
+                placeholder: i18n.snippetPlaceholder || 'Choose snippet'
             });
         }
         if (window.CodeMirror && fetchEditor.codemirror && processEditor.codemirror && CodeMirror.showHint) {
@@ -419,7 +422,7 @@ jQuery(document).ready(function ($) {
         $('#batch_fetch').on('click', function () {
             ajaxInProgress = true;
             batchStop = false;
-            changeStatus('Fetching', 'blue');
+            changeStatus(i18n.statusFetching || 'Fetching', 'blue');
             $('#batch_fetch_output').html(get_loader());
             const fetch_code = fetchEditor.codemirror.getValue();
             $ajax({
@@ -434,13 +437,13 @@ jQuery(document).ready(function ($) {
                 $('#batch_fetch_output').html(data.message);
                 $('#batch_progress').attr('max', data.count).val(0);
                 $('#batch_progress_label').text(`0 / ${data.count}`);
-                changeStatus('Fetched', 'green');
+                changeStatus(i18n.statusFetched || 'Fetched', 'green');
             }).catch((error) => {
                 console.error(error);
-                const errorMessage = error?.responseJSON?.data?.message || 'Unknown error';
+                const errorMessage = error?.responseJSON?.data?.message || (i18n.unknownError || 'Unknown error');
                 const $error = $('<pre />', { style: 'color:red;' }).text(errorMessage);
                 $('#batch_fetch_output').empty().append($error);
-                changeStatus('Fail', 'red');
+                changeStatus(i18n.statusFail || 'Fail', 'red');
             }).finally(() => {
                 ajaxInProgress = false;
             });
@@ -472,11 +475,11 @@ jQuery(document).ready(function ($) {
 
         const runBatch = (index = 0) => {
             if (batchStop) {
-                changeStatus('Paused', 'orange');
+                changeStatus(i18n.statusPaused || 'Paused', 'orange');
                 return;
             }
             ajaxInProgress = true;
-            changeStatus('Processing', 'blue');
+            changeStatus(i18n.statusProcessing || 'Processing', 'blue');
             const process_code = processEditor.codemirror.getValue();
             $ajax({
                 action: 'ajax_snippet_batch_next',
@@ -495,7 +498,7 @@ jQuery(document).ready(function ($) {
                 $('#batch_progress').attr('max', data.total).val(data.index);
                 $('#batch_progress_label').text(`${data.index} / ${data.total}`);
                 if (data.done) {
-                    changeStatus('Done', 'green');
+                    changeStatus(i18n.statusDone || 'Done', 'green');
                     setBatchControls({ pauseVisible: false, resumeVisible: false });
                     return;
                 }
@@ -505,10 +508,10 @@ jQuery(document).ready(function ($) {
                     return;
                 }
                 console.error(error);
-                const errorMessage = error?.responseJSON?.data?.message || 'Unknown error';
+                const errorMessage = error?.responseJSON?.data?.message || (i18n.unknownError || 'Unknown error');
                 const $error = $('<pre />', { style: 'color:red;' }).text(errorMessage);
                 $('#batch_process_output').empty().append($error);
-                changeStatus('Fail', 'red');
+                changeStatus(i18n.statusFail || 'Fail', 'red');
                 setBatchControls({ pauseVisible: false, resumeVisible: false });
             }).finally(() => {
                 ajaxInProgress = false;
@@ -528,12 +531,12 @@ jQuery(document).ready(function ($) {
                 currentRequest.abort();
             }
             setBatchControls({ pauseVisible: false, resumeVisible: true });
-            changeStatus('Paused', 'orange');
+            changeStatus(i18n.statusPaused || 'Paused', 'orange');
         });
 
         $('#batch_resume').on('click', function () {
             batchStop = false;
-            changeStatus('Processing', 'blue');
+            changeStatus(i18n.statusProcessing || 'Processing', 'blue');
             setBatchControls({ pauseVisible: true, resumeVisible: false });
             fetchBatchStatus().then((response) => {
                 if (!response.success || !response.data || !response.data.exists) {
@@ -545,10 +548,10 @@ jQuery(document).ready(function ($) {
                 runBatch(data.index);
             }).catch((error) => {
                 console.error(error);
-                const errorMessage = error?.responseJSON?.data?.message || 'Brak danych do wznowienia.';
+                const errorMessage = error?.responseJSON?.data?.message || (i18n.resumeMissing || 'No batch data to resume.');
                 const $error = $('<pre />', { style: 'color:red;' }).text(errorMessage);
                 $('#batch_process_output').empty().append($error);
-                changeStatus('Fail', 'red');
+                changeStatus(i18n.statusFail || 'Fail', 'red');
                 setBatchControls({ pauseVisible: false, resumeVisible: false });
             });
         });
@@ -561,7 +564,7 @@ jQuery(document).ready(function ($) {
             if (data.index < data.total) {
                 $('#batch_progress').attr('max', data.total).val(data.index);
                 $('#batch_progress_label').text(`${data.index} / ${data.total}`);
-                changeStatus('Paused', 'orange');
+                changeStatus(i18n.statusPaused || 'Paused', 'orange');
                 setBatchControls({ pauseVisible: false, resumeVisible: true });
             }
         }).catch(() => {
@@ -596,13 +599,13 @@ jQuery(document).ready(function ($) {
         }
     });
 
-    $('#snippet_form').submit(function (event) {
-        event.preventDefault();
-        ajaxInProgress = true;
-        changeStatus('Processing', 'blue');
-        $('#cancel_ajax').show();
-        $('#output').html(get_loader());
-        const snippet_content = $('#snippet_content').val();
+        $('#snippet_form').submit(function (event) {
+            event.preventDefault();
+            ajaxInProgress = true;
+            changeStatus(i18n.statusProcessing || 'Processing', 'blue');
+            $('#cancel_ajax').show();
+            $('#output').html(get_loader());
+            const snippet_content = $('#snippet_content').val();
         $ajax({
             action: 'ajax_snippet_submit',
             nonce: ajax_snippets_plugin_params.nonce,
@@ -615,16 +618,16 @@ jQuery(document).ready(function ($) {
                     return_result = data.return;
                 }
                 $('#output').html(data.message);
-                changeStatus('Done', 'green');
+                changeStatus(i18n.statusDone || 'Done', 'green');
             } else {
                 throw (response);
             }
         }).catch((error) => {
             console.error(error);
-            const errorMessage = error?.responseJSON?.data?.message || 'Unknown error';
+            const errorMessage = error?.responseJSON?.data?.message || (i18n.unknownError || 'Unknown error');
             const $error = $('<pre />', { style: 'color:red;' }).text(errorMessage);
             $('#output').empty().append($error);
-            changeStatus('Fail', 'red');
+            changeStatus(i18n.statusFail || 'Fail', 'red');
         }).finally(() => {
             ajaxInProgress = false;
             $('#cancel_ajax').hide();

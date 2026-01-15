@@ -16,12 +16,6 @@ Quickly run and test PHP snippets in the WordPress admin, with a batch mode for 
 
 The plugin uses `plugin-update-checker`.
 
-- Make sure `vendor/` is present on the server (run `composer install` during deploy or commit `vendor/` to the repo).
-- For each release, bump `Version:` in `ajax-snippets.php`.
-- Create a GitHub tag and release with the same version (e.g. `2.0.3`).
-
-GitHub automatically provides `Source code (zip)` for tags, which is used for updates.
-
 ## Usage
 
 The admin menu adds two pages:

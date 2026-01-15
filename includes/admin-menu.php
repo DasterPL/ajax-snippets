@@ -4,8 +4,8 @@ defined('ABSPATH') || exit;
 
 add_action('admin_menu', function () {
     add_menu_page(
-        'Ajax Snippets',
-        'Ajax Snippets',
+        __('Ajax Snippets', 'ajax-snippets'),
+        __('Ajax Snippets', 'ajax-snippets'),
         'manage_options',
         'ajax-snippets',
         function () {
@@ -14,8 +14,8 @@ add_action('admin_menu', function () {
     );
     add_submenu_page(
         'ajax-snippets',
-        'Ajax Snippets Batch',
-        'Batch Runner',
+        __('Ajax Snippets Batch', 'ajax-snippets'),
+        __('Batch Runner', 'ajax-snippets'),
         'manage_options',
         'ajax-snippets-batch',
         function () {

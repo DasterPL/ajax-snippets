@@ -38,7 +38,26 @@ add_action('admin_enqueue_scripts', function ($hook) {
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('ajax_snippets_nonce'),
             'includes_url' => includes_url(),
-            'editor_settings' => $settings
+            'editor_settings' => $settings,
+            'i18n' => [
+                'statusLabel' => __('Status:', 'ajax-snippets'),
+                'insertAtCursor' => __('Insert at cursor (do not replace all)', 'ajax-snippets'),
+                'cancel' => __('Cancel', 'ajax-snippets'),
+                'insert' => __('Insert', 'ajax-snippets'),
+                'insertAndRun' => __('Insert and run', 'ajax-snippets'),
+                'snippetDialogTitle' => __('Set snippet parameters', 'ajax-snippets'),
+                'selectPlaceholder' => __('Select...', 'ajax-snippets'),
+                'missingFields' => __('Fill in:', 'ajax-snippets'),
+                'snippetPlaceholder' => __('Choose snippet', 'ajax-snippets'),
+                'resumeMissing' => __('No batch data to resume.', 'ajax-snippets'),
+                'unknownError' => __('Unknown error', 'ajax-snippets'),
+                'statusFetching' => __('Fetching', 'ajax-snippets'),
+                'statusFetched' => __('Fetched', 'ajax-snippets'),
+                'statusProcessing' => __('Processing', 'ajax-snippets'),
+                'statusDone' => __('Done', 'ajax-snippets'),
+                'statusFail' => __('Fail', 'ajax-snippets'),
+                'statusPaused' => __('Paused', 'ajax-snippets')
+            ]
         ]
     );
 });

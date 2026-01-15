@@ -25,7 +25,7 @@ jobs:
       - name: Build zip
         run: |
           PLUGIN_SLUG="ajax-snippets"
-          ZIP_NAME="${PLUGIN_SLUG}-${{ github.event.release.tag_name }}.zip"
+          ZIP_NAME="${PLUGIN_SLUG}.zip"
           mkdir -p build
           rsync -av --exclude '.git' --exclude '.github' --exclude 'build' --exclude '*.zip' --exclude 'node_modules' ./ "build/${PLUGIN_SLUG}/"
           (cd build && zip -r "../${ZIP_NAME}" "${PLUGIN_SLUG}")

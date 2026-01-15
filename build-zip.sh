@@ -2,8 +2,7 @@
 set -euo pipefail
 
 PLUGIN_SLUG="ajax-snippets"
-VERSION="${1:-dev}"
-ZIP_NAME="${PLUGIN_SLUG}-${VERSION}.zip"
+ZIP_NAME="${PLUGIN_SLUG}.zip"
 
 rm -rf build
 mkdir -p build

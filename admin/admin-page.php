@@ -13,7 +13,7 @@
             <input class="button button-primary" type="submit" value="Wykonaj">
         </div>
         <?php
-        require plugin_dir_path(__FILE__) . 'snippet-templates.php';
+        require plugin_dir_path(__FILE__) . '../includes/snippet-templates.php';
         ?>
         <div class="snippet_select">
             <label for="snippet_templates">Gotowe snippety</label>
@@ -28,13 +28,7 @@
                 <?php endforeach; ?>
             </select>
         </div>
-        <?php
-        $last_snippet = get_transient('ajax-snippet_' . get_current_user_id());
-        if ($last_snippet === false) {
-            $last_snippet = "<?php";
-        }
-        ?>
-        <textarea id="snippet_content" name="snippet_content"><?php echo esc_textarea($last_snippet); ?></textarea>
+        <textarea id="snippet_content" name="snippet_content"><?php echo esc_textarea("<?php"); ?></textarea>
     </form>
     <hr>
     <div id="output"></div>

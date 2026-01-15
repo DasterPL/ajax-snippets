@@ -14,16 +14,10 @@
             <span class="status">Status: Waiting</span>
         </div>
         <?php
-        $fetch_code = get_transient('ajax-snippet-batch-fetch_' . get_current_user_id());
-        if ($fetch_code === false) {
-            $fetch_code = "<?php\n// return array of items\nreturn [];";
-        }
-        $process_code = get_transient('ajax-snippet-batch-process_' . get_current_user_id());
-        if ($process_code === false) {
-            $process_code = "<?php\n// available: \$item, \$index, \$total, \$data\n// echo Ajax_Snippets_Table::render(\$item, 'Item');\n";
-        }
+        $fetch_code = "<?php\n// return array of items\nreturn [];";
+        $process_code = "<?php\n// available: \$item, \$index, \$total, \$data\n// echo Ajax_Snippets_Table::render(\$item, 'Item');\n";
         ?>
-        <?php require plugin_dir_path(__FILE__) . 'snippet-templates.php'; ?>
+        <?php require plugin_dir_path(__FILE__) . '../includes/snippet-templates.php'; ?>
         <div class="snippet_batch_select">
             <div class="snippet_select">
                 <label for="batch_fetch_templates">Gotowe: pobierz dane</label>

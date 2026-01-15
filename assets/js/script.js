@@ -4,6 +4,7 @@ jQuery(document).ready(function ($) {
     let ajaxInProgress = false;
     let currentRequest = null;
     let batchStop = false;
+    const storagePrefix = 'ajax_snippets_';
 
     function $ajax(data) {
         return new Promise((resolve, reject) => {
@@ -28,6 +29,29 @@ jQuery(document).ready(function ($) {
         $('.status').html(`Status: ${text}`);
         $('.status').css('color', color);
     }
+    const getStoredValue = (key) => {
+        try {
+            return window.localStorage.getItem(storagePrefix + key);
+        } catch (error) {
+            return null;
+        }
+    };
+    const setStoredValue = (key, value) => {
+        try {
+            window.localStorage.setItem(storagePrefix + key, value);
+        } catch (error) {
+            // Ignore storage failures.
+        }
+    };
+    const debounce = (fn, delay) => {
+        let timer = null;
+        return (...args) => {
+            if (timer) {
+                clearTimeout(timer);
+            }
+            timer = setTimeout(() => fn(...args), delay);
+        };
+    };
     const get_loader = () => `<div style="display: grid; place-content: center;"><img src="${ajax_snippets_plugin_params.includes_url}/images/spinner-2x.gif" alt="Loading"/></div>`;
     const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const ensureSnippetDialog = () => {
@@ -307,6 +331,16 @@ jQuery(document).ready(function ($) {
         }
         const editor = wp.codeEditor.initialize($snippetContent, ajax_snippets_plugin_params.editor_settings);
         window.snippetEditor = editor;
+        const storedSnippet = getStoredValue('snippet_content');
+        if (storedSnippet !== null) {
+            editor.codemirror.setValue(storedSnippet);
+            editor.codemirror.save();
+        }
+        const saveSnippet = debounce(() => {
+            editor.codemirror.save();
+            setStoredValue('snippet_content', $snippetContent.val());
+        }, 300);
+        editor.codemirror.on('change', saveSnippet);
         const $snippetTemplates = $('#snippet_templates');
         if ($snippetTemplates.length && $.fn.select2) {
             $snippetTemplates.select2({
@@ -335,6 +369,26 @@ jQuery(document).ready(function ($) {
         const processEditor = wp.codeEditor.initialize($process, ajax_snippets_plugin_params.editor_settings);
         window.batchFetchEditor = fetchEditor;
         window.batchProcessEditor = processEditor;
+        const storedFetch = getStoredValue('batch_fetch_code');
+        if (storedFetch !== null) {
+            fetchEditor.codemirror.setValue(storedFetch);
+            fetchEditor.codemirror.save();
+        }
+        const storedProcess = getStoredValue('batch_process_code');
+        if (storedProcess !== null) {
+            processEditor.codemirror.setValue(storedProcess);
+            processEditor.codemirror.save();
+        }
+        const saveFetch = debounce(() => {
+            fetchEditor.codemirror.save();
+            setStoredValue('batch_fetch_code', $fetch.val());
+        }, 300);
+        const saveProcess = debounce(() => {
+            processEditor.codemirror.save();
+            setStoredValue('batch_process_code', $process.val());
+        }, 300);
+        fetchEditor.codemirror.on('change', saveFetch);
+        processEditor.codemirror.on('change', saveProcess);
         const $batchFetchTemplates = $('#batch_fetch_templates');
         const $batchProcessTemplates = $('#batch_process_templates');
         if ($.fn.select2) {
@@ -408,6 +462,13 @@ jQuery(document).ready(function ($) {
             const value = parseInt($('#batch_size').val(), 10);
             return Number.isFinite(value) && value > 0 ? value : 10;
         };
+        const storedBatchSize = getStoredValue('batch_size');
+        if (storedBatchSize !== null && $('#batch_size').length) {
+            $('#batch_size').val(storedBatchSize);
+        }
+        $('#batch_size').on('change input', function () {
+            setStoredValue('batch_size', $(this).val());
+        });
 
         const runBatch = (index = 0) => {
             if (batchStop) {

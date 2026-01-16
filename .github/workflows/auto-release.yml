@@ -42,3 +42,39 @@ jobs:
           tag_name: ${{ steps.version.outputs.version }}
           name: ${{ steps.version.outputs.version }}
           generate_release_notes: true
+
+      - name: Setup PHP
+        if: steps.tag.outputs.exists != 'true'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer
+
+      - name: Install dependencies
+        if: steps.tag.outputs.exists != 'true'
+        run: composer install --no-dev --prefer-dist --optimize-autoloader
+
+      - name: Build zip
+        if: steps.tag.outputs.exists != 'true'
+        run: |
+          PLUGIN_SLUG="ajax-snippets"
+          ZIP_NAME="${PLUGIN_SLUG}.zip"
+          mkdir -p build
+          rsync -av \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '.gitignore' \
+            --exclude 'build' \
+            --exclude '*.zip' \
+            --exclude 'build-zip.sh' \
+            --exclude 'composer.json' \
+            --exclude 'composer.lock' \
+            --exclude 'node_modules' \
+            ./ "build/${PLUGIN_SLUG}/"
+          (cd build && zip -r "../${ZIP_NAME}" "${PLUGIN_SLUG}")
+
+      - name: Upload release asset
+        if: steps.tag.outputs.exists != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "ajax-snippets.zip"

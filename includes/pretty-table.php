@@ -40,6 +40,7 @@ if (!class_exists('Ajax_Snippets_Table')) {
             }
             $rows = '';
             foreach ($data as $key => $value) {
+                $value = maybe_unserialize($value);
                 $path = self::build_path($context, $path_prefix, $base_path, $key);
                 $path_attr = $path !== '' ? ' data-path="' . esc_attr($path) . '" class="ajax-snippets-path"' : '';
                 $rows .= '<tr><th' . $path_attr . '>' . esc_html((string) $key) . '</th><td>' . self::value($value, $context, $path) . '</td></tr>';

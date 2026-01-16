@@ -34,6 +34,10 @@ The admin menu adds two pages:
 
 Editor contents are stored in the browser `localStorage`.
 
+## Translations
+
+The default UI is English. Polish translations live in `languages/ajax-snippets-pl_PL.po`.
+
 ## Structure
 
 ```

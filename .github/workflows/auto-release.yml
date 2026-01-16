@@ -54,6 +54,10 @@ jobs:
         if: steps.tag.outputs.exists != 'true'
         run: composer install --no-dev --prefer-dist --optimize-autoloader
 
+      - name: Verify vendor
+        if: steps.tag.outputs.exists != 'true'
+        run: test -f vendor/yahnis-elsts/plugin-update-checker/load-v5p6.php
+
       - name: Build zip
         if: steps.tag.outputs.exists != 'true'
         run: |

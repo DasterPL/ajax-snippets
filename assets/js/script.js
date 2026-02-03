@@ -178,6 +178,14 @@ jQuery(document).ready(function ($) {
                 }
             };
             if (source) {
+                select2Options.tags = true;
+                select2Options.createTag = function (params) {
+                    const term = (params.term || '').trim();
+                    if (!term || !/^\d+$/.test(term)) {
+                        return null;
+                    }
+                    return { id: term, text: term, newTag: true };
+                };
                 select2Options.ajax = {
                     url: ajax_snippets_plugin_params.ajax_url,
                     type: 'POST',
@@ -202,6 +210,13 @@ jQuery(document).ready(function ($) {
                 }
             });
             if (field.defaultValue) {
+                const hasOption = Array.from(select.options).some((option) => option.value === field.defaultValue);
+                if (!hasOption) {
+                    const opt = document.createElement('option');
+                    opt.value = field.defaultValue;
+                    opt.textContent = field.defaultValue;
+                    select.appendChild(opt);
+                }
                 $select.val(field.defaultValue).trigger('change.select2');
             }
         }

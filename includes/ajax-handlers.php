@@ -62,11 +62,12 @@ add_action('wp_ajax_ajax_snippet_batch_init', function () {
                 'message' => 'Fetch code must return an array.'
             ], 422);
         }
-        set_transient('ajax-snippet-batch-data_' . get_current_user_id(), $data, DAY_IN_SECONDS);
-        set_transient('ajax-snippet-batch-index_' . get_current_user_id(), 0, DAY_IN_SECONDS);
-        wp_send_json_success([
-            'message' => $output,
-            'count' => count($data)
+    set_transient('ajax-snippet-batch-data_' . get_current_user_id(), $data, DAY_IN_SECONDS);
+    set_transient('ajax-snippet-batch-index_' . get_current_user_id(), 0, DAY_IN_SECONDS);
+    delete_transient('ajax-snippet-batch-prev_' . get_current_user_id());
+    wp_send_json_success([
+        'message' => $output,
+        'count' => count($data)
         ], 200);
     } catch (\Throwable $th) {
         wp_send_json_error([
@@ -110,6 +111,7 @@ add_action('wp_ajax_ajax_snippet_batch_next', function () {
     if ($index >= $total) {
         delete_transient('ajax-snippet-batch-data_' . get_current_user_id());
         delete_transient('ajax-snippet-batch-index_' . get_current_user_id());
+        delete_transient('ajax-snippet-batch-prev_' . get_current_user_id());
         wp_send_json_success([
             'message' => '',
             'done' => true,
@@ -121,17 +123,21 @@ add_action('wp_ajax_ajax_snippet_batch_next', function () {
     try {
         $messages = '';
         $return = null;
+        $prev = get_transient('ajax-snippet-batch-prev_' . get_current_user_id());
         $start_index = $index;
         $end_index = min($index + $batch_size, $total);
         for ($i = $start_index; $i < $end_index; $i++) {
             $index = $i;
             $item = $data[$i];
             ob_start();
+            // $prev contains the previous iteration's return value.
             $return = eval ("?>" . $process_code);
             $messages .= ob_get_clean();
+            $prev = $return;
         }
         $next_index = $end_index;
         set_transient('ajax-snippet-batch-index_' . get_current_user_id(), $next_index, DAY_IN_SECONDS);
+        set_transient('ajax-snippet-batch-prev_' . get_current_user_id(), $prev, DAY_IN_SECONDS);
         wp_send_json_success([
             'message' => $messages,
             'return' => $return,

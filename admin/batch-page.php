@@ -15,7 +15,7 @@
         </div>
         <?php
         $fetch_code = "<?php\n// return array of items\nreturn [];";
-        $process_code = "<?php\n// available: \$item, \$index, \$total, \$data\n// echo Ajax_Snippets_Table::render(\$item, 'Item');\n";
+        $process_code = "<?php\n// available: \$item, \$index, \$total, \$data, \$prev\n// \$prev is the previous iteration's return value\n// echo Ajax_Snippets_Table::render(\$item, 'Item');\n";
         ?>
         <?php require plugin_dir_path(__FILE__) . '../includes/snippet-templates.php'; ?>
         <div class="snippet_batch_select">
@@ -61,7 +61,8 @@
             <code>$item</code> (<?php echo esc_html__('current item', 'ajax-snippets'); ?>),
             <code>$index</code> (<?php echo esc_html__('index from 0', 'ajax-snippets'); ?>),
             <code>$total</code> (<?php echo esc_html__('total items', 'ajax-snippets'); ?>),
-            <code>$data</code> (<?php echo esc_html__('full data array', 'ajax-snippets'); ?>).
+            <code>$data</code> (<?php echo esc_html__('full data array', 'ajax-snippets'); ?>),
+            <code>$prev</code> (<?php echo esc_html__('previous iteration return value', 'ajax-snippets'); ?>).
         </div>
         <div class="snippet_batch_progress">
             <progress id="batch_progress" max="0" value="0"></progress>

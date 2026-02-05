@@ -389,6 +389,26 @@ $batch_fetch_templates = [
             'label' => 'Posts: get all posts (ID)',
             'code' => "<?php\n\$posts = get_posts([\n    'numberposts' => -1,\n    'fields' => 'ids'\n]);\nreturn \$posts;"
         ]
+    ],
+    'Files' => [
+        'csv_fetch' => [
+            'label' => 'CSV: fetch rows (batch)',
+            'code' => "<?php\n\$input = '{{csv_path}}';\n\$has_header = '{{has_header}}' === 'yes';\n\$delimiter = '{{delimiter}}';\nif (\$delimiter === '' || \$delimiter === null) {\n    \$delimiter = ',';\n} elseif (strtolower(\$delimiter) === 'tab' || \$delimiter === '\\\\t') {\n    \$delimiter = \"\\t\";\n}\n\$source_path = \$input;\n\$downloaded = false;\nif (preg_match('~^https?://~i', \$input)) {\n    \$upload_dir = wp_upload_dir();\n    if (!empty(\$upload_dir['path']) && !empty(\$upload_dir['basedir'])) {\n        \$hash = md5(\$input);\n        \$filename = 'ajax-snippets-csv-' . \$hash . '-' . time() . '.csv';\n        \$target = trailingslashit(\$upload_dir['path']) . \$filename;\n        \$latest = trailingslashit(\$upload_dir['basedir']) . 'ajax-snippets-csv-' . \$hash . '-latest.csv';\n        \$response = wp_remote_get(\$input, ['timeout' => 20]);\n        if (is_wp_error(\$response)) {\n            echo Ajax_Snippets_Table::render(['error' => \$response->get_error_message()], 'CSV Download Error');\n            return [];\n        }\n        \$status = wp_remote_retrieve_response_code(\$response);\n        \$body = wp_remote_retrieve_body(\$response);\n        if (\$status !== 200 || \$body === '') {\n            echo Ajax_Snippets_Table::render(['status' => \$status, 'error' => 'Empty response'], 'CSV Download Error');\n            return [];\n        }\n        if (@file_put_contents(\$target, \$body) === false) {\n            echo Ajax_Snippets_Table::render(['error' => 'Cannot write file to uploads'], 'CSV Download Error');\n            return [];\n        }\n        @file_put_contents(\$latest, \$body);\n        \$source_path = \$target;\n        \$downloaded = true;\n    }\n}\nif (!\$source_path || !file_exists(\$source_path) || !is_readable(\$source_path)) {\n    echo Ajax_Snippets_Table::render(['path' => \$source_path, 'error' => 'File not found or unreadable'], 'CSV');\n    return [];\n}\n\$meta = [\n    'path' => \$source_path,\n    'downloaded' => \$downloaded ? 'yes' : 'no',\n    'has_header' => \$has_header ? 'yes' : 'no',\n    'delimiter' => \$delimiter\n];\necho Ajax_Snippets_Table::render(\$meta, 'CSV Source');\n\$preview = [];\n\$handle = fopen(\$source_path, 'r');\nif (!\$handle) {\n    echo Ajax_Snippets_Table::render(['error' => 'Cannot open file'], 'CSV');\n    return [];\n}\n\$max_preview = 5;\n\$row_index = 0;\nwhile ((\$row = fgetcsv(\$handle, 0, \$delimiter)) !== false) {\n    \$preview[] = \$row;\n    \$row_index++;\n    if (\$row_index >= \$max_preview) {\n        break;\n    }\n}\nrewind(\$handle);\nif (\$has_header) {\n    fgetcsv(\$handle, 0, \$delimiter);\n}\n\$count = 0;\nwhile (fgetcsv(\$handle, 0, \$delimiter) !== false) {\n    \$count++;\n}\nfclose(\$handle);\necho Ajax_Snippets_Table::render(\$preview, 'CSV Preview');\nif (\$count < 1) {\n    return [];\n}\nreturn range(0, \$count - 1);",
+            'vars' => [
+                ['name' => 'csv_path', 'label' => 'CSV link or path', 'default' => '', 'type' => 'text'],
+                [
+                    'name' => 'has_header',
+                    'label' => 'First line is header',
+                    'default' => 'yes',
+                    'type' => 'select',
+                    'options' => [
+                        ['value' => 'yes', 'label' => 'Yes'],
+                        ['value' => 'no', 'label' => 'No']
+                    ]
+                ],
+                ['name' => 'delimiter', 'label' => 'Delimiter (, ; or \\t)', 'default' => ',', 'type' => 'text']
+            ]
+        ]
     ]
 ];
 
@@ -450,6 +470,26 @@ $batch_process_templates = [
                     'options' => $post_methods
                 ],
                 ['name' => 'param', 'label' => 'Parameter (optional)', 'default' => '', 'type' => 'text', 'required' => false]
+            ]
+        ]
+    ],
+    'Files' => [
+        'csv_row' => [
+            'label' => 'CSV: show row (batch)',
+            'code' => "<?php\n\$input = '{{csv_path}}';\n\$has_header = '{{has_header}}' === 'yes';\n\$delimiter = '{{delimiter}}';\nif (\$delimiter === '' || \$delimiter === null) {\n    \$delimiter = ',';\n} elseif (strtolower(\$delimiter) === 'tab' || \$delimiter === '\\\\t') {\n    \$delimiter = \"\\t\";\n}\n\$source_path = \$input;\nif (preg_match('~^https?://~i', \$input)) {\n    \$upload_dir = wp_upload_dir();\n    if (!empty(\$upload_dir['basedir'])) {\n        \$candidate = trailingslashit(\$upload_dir['basedir']) . 'ajax-snippets-csv-' . md5(\$input) . '-latest.csv';\n        if (file_exists(\$candidate)) {\n            \$source_path = \$candidate;\n        }\n    }\n}\nif (!\$source_path || !file_exists(\$source_path) || !is_readable(\$source_path)) {\n    echo Ajax_Snippets_Table::render(['path' => \$source_path, 'error' => 'File not found or unreadable'], 'CSV Row');\n    return;\n}\n\$handle = fopen(\$source_path, 'r');\nif (!\$handle) {\n    echo Ajax_Snippets_Table::render(['error' => 'Cannot open file'], 'CSV Row');\n    return;\n}\n\$header = [];\nif (\$has_header) {\n    \$header = fgetcsv(\$handle, 0, \$delimiter);\n    if (!is_array(\$header)) {\n        \$header = [];\n    }\n}\n\$target = max(0, (int) \$item);\n\$current = 0;\n\$row = null;\nwhile ((\$data = fgetcsv(\$handle, 0, \$delimiter)) !== false) {\n    if (\$current === \$target) {\n        \$row = \$data;\n        break;\n    }\n    \$current++;\n}\nfclose(\$handle);\nif (\$row === null) {\n    echo Ajax_Snippets_Table::render(['index' => \$target, 'error' => 'Row not found'], 'CSV Row');\n    return;\n}\nif (!empty(\$header)) {\n    \$mapped = [];\n    foreach (\$header as \$i => \$label) {\n        \$mapped[\$label !== '' ? \$label : 'col_' . (\$i + 1)] = \$row[\$i] ?? null;\n    }\n    echo Ajax_Snippets_Table::render(\$mapped, 'CSV Row');\n    return;\n}\necho Ajax_Snippets_Table::render(\$row, 'CSV Row');",
+            'vars' => [
+                ['name' => 'csv_path', 'label' => 'CSV link or path', 'default' => '', 'type' => 'text'],
+                [
+                    'name' => 'has_header',
+                    'label' => 'First line is header',
+                    'default' => 'yes',
+                    'type' => 'select',
+                    'options' => [
+                        ['value' => 'yes', 'label' => 'Yes'],
+                        ['value' => 'no', 'label' => 'No']
+                    ]
+                ],
+                ['name' => 'delimiter', 'label' => 'Delimiter (, ; or \\t)', 'default' => ',', 'type' => 'text']
             ]
         ]
     ]

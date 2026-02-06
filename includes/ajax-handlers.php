@@ -13,6 +13,7 @@ add_action('wp_ajax_ajax_snippet_submit', function () {
 
     if (isset($_POST['snippet_content'])) {
         require_once AJAX_SNIPPETS_DIR . 'includes/pretty-table.php';
+        require_once AJAX_SNIPPETS_DIR . 'includes/csv-helper.php';
         $snippet_content = wp_unslash($_POST['snippet_content']);
         try {
             ob_start();
@@ -51,6 +52,7 @@ add_action('wp_ajax_ajax_snippet_batch_init', function () {
     }
 
     require_once AJAX_SNIPPETS_DIR . 'includes/pretty-table.php';
+    require_once AJAX_SNIPPETS_DIR . 'includes/csv-helper.php';
     $fetch_code = wp_unslash($_POST['fetch_code']);
 
     try {
@@ -93,6 +95,7 @@ add_action('wp_ajax_ajax_snippet_batch_next', function () {
     }
 
     require_once AJAX_SNIPPETS_DIR . 'includes/pretty-table.php';
+    require_once AJAX_SNIPPETS_DIR . 'includes/csv-helper.php';
     $process_code = wp_unslash($_POST['process_code']);
 
     $data = get_transient('ajax-snippet-batch-data_' . get_current_user_id());

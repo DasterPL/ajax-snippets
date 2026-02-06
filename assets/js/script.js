@@ -423,6 +423,78 @@ jQuery(document).ready(function ($) {
             enableEditorTools(fetchEditor.codemirror);
             enableEditorTools(processEditor.codemirror);
         }
+
+        const syncEditorHeights = () => {
+            const fetchWrapper = fetchEditor.codemirror.getWrapperElement();
+            const processWrapper = processEditor.codemirror.getWrapperElement();
+            if (!fetchWrapper || !processWrapper) {
+                return;
+            }
+            const getHeight = (wrapper) => wrapper.getBoundingClientRect().height;
+            const setHeight = (editor, wrapper, height) => {
+                wrapper.style.height = `${height}px`;
+                editor.setSize(null, height);
+            };
+            const applyHeight = (sourceEditor, sourceWrapper, targetEditor, targetWrapper) => {
+                const height = getHeight(sourceWrapper);
+                if (!height) {
+                    return;
+                }
+                const targetHeight = getHeight(targetWrapper);
+                if (Math.abs(height - targetHeight) < 2) {
+                    return;
+                }
+                setHeight(targetEditor, targetWrapper, height);
+            };
+
+            let active = null;
+            const onMouseDownFetch = () => {
+                active = 'fetch';
+            };
+            const onMouseDownProcess = () => {
+                active = 'process';
+            };
+            const onMouseUp = () => {
+                if (!active) {
+                    return;
+                }
+                if (active === 'fetch') {
+                    applyHeight(fetchEditor.codemirror, fetchWrapper, processEditor.codemirror, processWrapper);
+                } else {
+                    applyHeight(processEditor.codemirror, processWrapper, fetchEditor.codemirror, fetchWrapper);
+                }
+                active = null;
+            };
+
+            fetchWrapper.addEventListener('mousedown', onMouseDownFetch);
+            processWrapper.addEventListener('mousedown', onMouseDownProcess);
+            window.addEventListener('mouseup', onMouseUp);
+
+            if (window.ResizeObserver) {
+                let syncing = false;
+                const observer = new ResizeObserver((entries) => {
+                    if (syncing) {
+                        return;
+                    }
+                    for (const entry of entries) {
+                        if (entry.target === fetchWrapper) {
+                            syncing = true;
+                            applyHeight(fetchEditor.codemirror, fetchWrapper, processEditor.codemirror, processWrapper);
+                        } else if (entry.target === processWrapper) {
+                            syncing = true;
+                            applyHeight(processEditor.codemirror, processWrapper, fetchEditor.codemirror, fetchWrapper);
+                        }
+                        requestAnimationFrame(() => {
+                            syncing = false;
+                        });
+                    }
+                });
+                observer.observe(fetchWrapper);
+                observer.observe(processWrapper);
+            }
+        };
+        syncEditorHeights();
+
         $batchFetchTemplates.on('change', function () {
             applySnippetTemplate($(this), fetchEditor, () => {
                 $('#batch_fetch').trigger('click');

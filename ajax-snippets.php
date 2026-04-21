@@ -3,7 +3,7 @@
 Plugin Name: AJAX Snippets
 Description: Simple AJAX Snippets
 Version: 2.6.2
-Requires at least: 4.9
+Requires at least: 6.6
 Tested up to: 6.9
 Requires PHP: 7.0
 Text Domain: ajax-snippets

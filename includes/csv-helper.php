@@ -22,6 +22,9 @@ function ajax_snippets_csv_source($input, array $args = [])
                 $filename = 'ajax-snippets-csv-' . $hash . '-' . time() . '.csv';
                 $target = trailingslashit($upload_dir['path']) . $filename;
                 $latest = trailingslashit($upload_dir['basedir']) . 'ajax-snippets-csv-' . $hash . '-latest.csv';
+                foreach (glob(trailingslashit($upload_dir['path']) . 'ajax-snippets-csv-' . $hash . '-*.csv') as $old_file) {
+                    @unlink($old_file);
+                }
                 $response = wp_remote_get($input, ['timeout' => 20]);
                 if (is_wp_error($response)) {
                     echo Ajax_Snippets_Table::render(['error' => $response->get_error_message()], 'CSV Download Error');

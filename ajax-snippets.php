@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: AJAX Snippets
-Description: Simple AJAX Snippets
+Description: A tool for WordPress administrators to run and test PHP code via AJAX.
 Version: 2.7
 Requires at least: 6.6
 Tested up to: 6.9

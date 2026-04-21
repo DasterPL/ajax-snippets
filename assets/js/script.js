@@ -17,8 +17,8 @@ jQuery(document).ready(function ($) {
                 type: 'POST',
                 data,
                 dataType: 'json',
-                success: function (respoonse) {
-                    resolve(respoonse);
+                success: function (response) {
+                    resolve(response);
                 },
                 error: function (error) {
                     reject(error);
@@ -31,6 +31,33 @@ jQuery(document).ready(function ($) {
         $('.status').text(`${label} ${text}`);
         $('.status').css('color', color);
     }
+    const getAjaxErrorText = (error, fallbackMessage) => {
+        let data = error?.responseJSON?.data || error?.data;
+        if (!data && error?.responseText) {
+            try {
+                const parsed = JSON.parse(error.responseText);
+                if (parsed?.data) {
+                    data = parsed.data;
+                }
+            } catch (e) {}
+        }
+        const code = data?.code || error?.status;
+        const type = data?.type;
+        const message = data?.message || fallbackMessage;
+        const line = data?.line;
+        const file = data?.file;
+
+        const prefix = [code ? `[${code}]` : '', type ? `[${type}]` : ''].join('');
+        let result = prefix ? `${prefix} ${message}` : (message || fallbackMessage);
+        if (line != null) {
+            const isEval = file && file.includes("eval()'d code");
+            result += `\nLine: ${line}`;
+            if (!isEval && file) {
+                result += ` in ${file}`;
+            }
+        }
+        return result;
+    };
     const getStoredValue = (key) => {
         try {
             return window.localStorage.getItem(storagePrefix + key);
@@ -337,7 +364,7 @@ jQuery(document).ready(function ($) {
             cm.setOption('gutters', gutters.concat(['CodeMirror-lint-markers']));
         }
         cm.on('inputRead', function (editorInstance, change) {
-            if (change.text && change.text[0] && /[a-zA-Z_]/.test(change.text[0])) {
+            if (!editorInstance.state.completionActive && change.text && change.text[0] && /[a-zA-Z_$]/.test(change.text[0])) {
                 editorInstance.showHint({ hint: CodeMirror.hint.php, completeSingle: false });
             }
         });
@@ -345,6 +372,9 @@ jQuery(document).ready(function ($) {
     const initSingleEditor = () => {
         const $snippetContent = $('#snippet_content');
         if (!$snippetContent.length) {
+            return;
+        }
+        if (!window.wp || !wp.codeEditor || typeof wp.codeEditor.initialize !== 'function') {
             return;
         }
         const editor = wp.codeEditor.initialize($snippetContent, ajax_snippets_plugin_params.editor_settings);
@@ -371,16 +401,35 @@ jQuery(document).ready(function ($) {
                 });
             });
         }
-        if (window.CodeMirror && editor.codemirror && CodeMirror.showHint) {
+        if (editor.codemirror && typeof editor.codemirror.showHint === 'function') {
             enableEditorTools(editor.codemirror);
         }
     };
     initSingleEditor();
+    const initOutputFormatToggle = (checkboxId, storageKey, $targets) => {
+        const $checkbox = $(`#${checkboxId}`);
+        if (!$checkbox.length) {
+            return;
+        }
+        const apply = () => {
+            $targets.toggleClass('output-raw', !$checkbox.is(':checked'));
+            setStoredValue(storageKey, $checkbox.is(':checked') ? '1' : '0');
+        };
+        if (getStoredValue(storageKey) === '0') {
+            $checkbox.prop('checked', false);
+            $targets.addClass('output-raw');
+        }
+        $checkbox.on('change', apply);
+    };
+    initOutputFormatToggle('output_format_pre', 'output_format_pre', $('#output'));
 
     const initBatchEditors = () => {
         const $fetch = $('#batch_fetch_code');
         const $process = $('#batch_process_code');
         if (!$fetch.length || !$process.length) {
+            return;
+        }
+        if (!window.wp || !wp.codeEditor || typeof wp.codeEditor.initialize !== 'function') {
             return;
         }
         const fetchEditor = wp.codeEditor.initialize($fetch, ajax_snippets_plugin_params.editor_settings);
@@ -419,7 +468,7 @@ jQuery(document).ready(function ($) {
                 placeholder: i18n.snippetPlaceholder || 'Choose snippet'
             });
         }
-        if (window.CodeMirror && fetchEditor.codemirror && processEditor.codemirror && CodeMirror.showHint) {
+        if (fetchEditor.codemirror && processEditor.codemirror && typeof fetchEditor.codemirror.showHint === 'function') {
             enableEditorTools(fetchEditor.codemirror);
             enableEditorTools(processEditor.codemirror);
         }
@@ -521,15 +570,14 @@ jQuery(document).ready(function ($) {
                     throw response;
                 }
                 const { data } = response;
-                $('#batch_fetch_output').html(data.message);
+                $('#batch_fetch_output').css('color', '').html(data.message);
                 $('#batch_progress').attr('max', data.count).val(0);
                 $('#batch_progress_label').text(`0 / ${data.count}`);
                 changeStatus(i18n.statusFetched || 'Fetched', 'green');
             }).catch((error) => {
                 console.error(error);
-                const errorMessage = error?.responseJSON?.data?.message || (i18n.unknownError || 'Unknown error');
-                const $error = $('<pre />', { style: 'color:red;' }).text(errorMessage);
-                $('#batch_fetch_output').empty().append($error);
+                const errorMessage = getAjaxErrorText(error, i18n.unknownError || 'Unknown error');
+                $('#batch_fetch_output').css('color', 'red').text(errorMessage);
                 changeStatus(i18n.statusFail || 'Fail', 'red');
             }).finally(() => {
                 ajaxInProgress = false;
@@ -595,9 +643,8 @@ jQuery(document).ready(function ($) {
                     return;
                 }
                 console.error(error);
-                const errorMessage = error?.responseJSON?.data?.message || (i18n.unknownError || 'Unknown error');
-                const $error = $('<pre />', { style: 'color:red;' }).text(errorMessage);
-                $('#batch_process_output').empty().append($error);
+                const errorMessage = getAjaxErrorText(error, i18n.unknownError || 'Unknown error');
+                $('#batch_process_output').css('color', 'red').text(errorMessage);
                 changeStatus(i18n.statusFail || 'Fail', 'red');
                 setBatchControls({ pauseVisible: false, resumeVisible: false });
             }).finally(() => {
@@ -607,7 +654,7 @@ jQuery(document).ready(function ($) {
 
         $('#batch_start').on('click', function () {
             batchStop = false;
-            $('#batch_process_output').empty();
+            $('#batch_process_output').css('color', '').empty();
             setBatchControls({ pauseVisible: true, resumeVisible: false });
             runBatch(0);
         });
@@ -635,7 +682,7 @@ jQuery(document).ready(function ($) {
                 runBatch(data.index);
             }).catch((error) => {
                 console.error(error);
-                const errorMessage = error?.responseJSON?.data?.message || (i18n.resumeMissing || 'No batch data to resume.');
+                const errorMessage = getAjaxErrorText(error, i18n.resumeMissing || 'No batch data to resume.');
                 const $error = $('<pre />', { style: 'color:red;' }).text(errorMessage);
                 $('#batch_process_output').empty().append($error);
                 changeStatus(i18n.statusFail || 'Fail', 'red');
@@ -659,6 +706,7 @@ jQuery(document).ready(function ($) {
         });
     };
     initBatchEditors();
+    initOutputFormatToggle('batch_output_format_pre', 'batch_output_format_pre', $('#batch_fetch_output, #batch_process_output'));
     // editor.on("inputRead", function (editor, event) {
     //     if (event.text[0].match(/[a-zA-Z_]/)) {
     //         editor.showHint({ hint: CodeMirror.hint.php });
@@ -704,16 +752,15 @@ jQuery(document).ready(function ($) {
                 if (data.return) {
                     return_result = data.return;
                 }
-                $('#output').html(data.message);
+                $('#output').css('color', '').html(data.message);
                 changeStatus(i18n.statusDone || 'Done', 'green');
             } else {
                 throw (response);
             }
         }).catch((error) => {
             console.error(error);
-            const errorMessage = error?.responseJSON?.data?.message || (i18n.unknownError || 'Unknown error');
-            const $error = $('<pre />', { style: 'color:red;' }).text(errorMessage);
-            $('#output').empty().append($error);
+            const errorMessage = getAjaxErrorText(error, i18n.unknownError || 'Unknown error');
+            $('#output').css('color', 'red').text(errorMessage);
             changeStatus(i18n.statusFail || 'Fail', 'red');
         }).finally(() => {
             ajaxInProgress = false;

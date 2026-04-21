@@ -9,6 +9,10 @@
                 <progress id="progress" max="0" value="0"></progress>
             </div>
             <span class="status"><?php echo esc_html__('Status: Waiting', 'ajax-snippets'); ?></span>
+            <label class="output-format-label">
+                <input type="checkbox" id="output_format_pre" checked>
+                <code>&lt;pre&gt;</code>
+            </label>
             <input id="cancel_ajax" style="display:none" class="button button-secondary" type="button" value="<?php echo esc_attr__('Cancel', 'ajax-snippets'); ?>">
             <input class="button button-primary" type="submit" value="<?php echo esc_attr__('Run', 'ajax-snippets'); ?>">
         </div>
@@ -31,6 +35,6 @@
         <textarea id="snippet_content" name="snippet_content"><?php echo esc_textarea("<?php"); ?></textarea>
     </form>
     <hr>
-    <div id="output"></div>
+    <pre id="output"></pre>
     <div class="snippet_footer"><?php echo esc_html(sprintf(__('Ajax-Snippets Version: %s', 'ajax-snippets'), AJAX_SNIPPETS_VERSION)); ?></div>
 </div>

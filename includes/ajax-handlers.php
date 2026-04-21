@@ -2,6 +2,33 @@
 
 defined('ABSPATH') || exit;
 
+if (!function_exists('ajax_snippets_classify_throwable')) {
+    function ajax_snippets_classify_throwable(\Throwable $throwable)
+    {
+        $class_name = get_class($throwable);
+        $short_name_pos = strrpos($class_name, '\\');
+        $short_name = $short_name_pos === false ? $class_name : substr($class_name, $short_name_pos + 1);
+        $type = strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $short_name));
+
+        switch (true) {
+            case $throwable instanceof \ParseError:
+            case $throwable instanceof \ArgumentCountError:
+            case $throwable instanceof \TypeError:
+            case $throwable instanceof \ValueError:
+                $status = 422;
+                break;
+            default:
+                $status = 500;
+                break;
+        }
+
+        return [
+            'type' => $type,
+            'status' => $status
+        ];
+    }
+}
+
 add_action('wp_ajax_ajax_snippet_submit', function () {
     check_ajax_referer('ajax_snippets_nonce', 'nonce');
 
@@ -24,16 +51,23 @@ add_action('wp_ajax_ajax_snippet_submit', function () {
                 'return' => $return
             ], 200);
         } catch (\Throwable $th) {
+            if (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+            $error = ajax_snippets_classify_throwable($th);
             wp_send_json_error([
-                'message' => $th->getMessage()
-            ], 500);
+                'code' => $error['status'],
+                'type' => $error['type'],
+                'message' => $th->getMessage(),
+                'line' => $th->getLine(),
+                'file' => $th->getFile(),
+            ], $error['status']);
         }
     } else {
         wp_send_json_error([
             'message' => 'Empty code!'
         ], 422);
     }
-    die();
 });
 
 add_action('wp_ajax_ajax_snippet_batch_init', function () {
@@ -64,19 +98,26 @@ add_action('wp_ajax_ajax_snippet_batch_init', function () {
                 'message' => 'Fetch code must return an array.'
             ], 422);
         }
-    set_transient('ajax-snippet-batch-data_' . get_current_user_id(), $data, DAY_IN_SECONDS);
-    set_transient('ajax-snippet-batch-index_' . get_current_user_id(), 0, DAY_IN_SECONDS);
-    delete_transient('ajax-snippet-batch-prev_' . get_current_user_id());
-    wp_send_json_success([
-        'message' => $output,
-        'count' => count($data)
+        set_transient('ajax-snippet-batch-data_' . get_current_user_id(), $data, DAY_IN_SECONDS);
+        set_transient('ajax-snippet-batch-index_' . get_current_user_id(), 0, DAY_IN_SECONDS);
+        delete_transient('ajax-snippet-batch-prev_' . get_current_user_id());
+        wp_send_json_success([
+            'message' => $output,
+            'count' => count($data)
         ], 200);
     } catch (\Throwable $th) {
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        $error = ajax_snippets_classify_throwable($th);
         wp_send_json_error([
-            'message' => $th->getMessage()
-        ], 500);
+            'code' => $error['status'],
+            'type' => $error['type'],
+            'message' => $th->getMessage(),
+            'line' => $th->getLine(),
+            'file' => $th->getFile(),
+        ], $error['status']);
     }
-    die();
 });
 
 add_action('wp_ajax_ajax_snippet_batch_next', function () {
@@ -105,7 +146,7 @@ add_action('wp_ajax_ajax_snippet_batch_next', function () {
         ], 422);
     }
 
-    $index = isset($_POST['index']) ? (int) $_POST['index'] : 0;
+    $index = isset($_POST['index']) ? max(0, (int) $_POST['index']) : 0;
     $batch_size = isset($_POST['batch_size']) ? (int) $_POST['batch_size'] : 10;
     if ($batch_size < 1) {
         $batch_size = 1;
@@ -149,11 +190,18 @@ add_action('wp_ajax_ajax_snippet_batch_next', function () {
             'total' => $total
         ], 200);
     } catch (\Throwable $th) {
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        $error = ajax_snippets_classify_throwable($th);
         wp_send_json_error([
-            'message' => $th->getMessage()
-        ], 500);
+            'code' => $error['status'],
+            'type' => $error['type'],
+            'message' => $th->getMessage(),
+            'line' => $th->getLine(),
+            'file' => $th->getFile(),
+        ], $error['status']);
     }
-    die();
 });
 
 add_action('wp_ajax_ajax_snippet_batch_status', function () {

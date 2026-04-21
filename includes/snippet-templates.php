@@ -111,45 +111,6 @@ $cart_item_methods = [
     ['value' => 'get_meta', 'label' => 'get_meta()', 'description' => 'Meta by key']
 ];
 
-$order_item_methods = [
-    ['value' => 'get_name', 'label' => 'get_name()', 'description' => 'Item name'],
-    ['value' => 'get_quantity', 'label' => 'get_quantity()', 'description' => 'Quantity'],
-    ['value' => 'get_total', 'label' => 'get_total()', 'description' => 'Line total'],
-    ['value' => 'get_subtotal', 'label' => 'get_subtotal()', 'description' => 'Line subtotal'],
-    ['value' => 'get_total_tax', 'label' => 'get_total_tax()', 'description' => 'Line tax'],
-    ['value' => 'get_taxes', 'label' => 'get_taxes()', 'description' => 'Taxes'],
-    ['value' => 'get_variation_id', 'label' => 'get_variation_id()', 'description' => 'Variation ID'],
-    ['value' => 'get_product_id', 'label' => 'get_product_id()', 'description' => 'Product ID'],
-    ['value' => 'get_product', 'label' => 'get_product()', 'description' => 'Product object'],
-    ['value' => 'get_meta', 'label' => 'get_meta()', 'description' => 'Meta by key'],
-    ['value' => 'get_meta_data', 'label' => 'get_meta_data()', 'description' => 'Meta data']
-];
-
-$cart_methods = [
-    ['value' => 'get_cart_contents_count', 'label' => 'get_cart_contents_count()', 'description' => 'Item count'],
-    ['value' => 'get_cart_contents_total', 'label' => 'get_cart_contents_total()', 'description' => 'Cart total'],
-    ['value' => 'get_total', 'label' => 'get_total()', 'description' => 'Total with tax'],
-    ['value' => 'get_subtotal', 'label' => 'get_subtotal()', 'description' => 'Subtotal'],
-    ['value' => 'get_discount_total', 'label' => 'get_discount_total()', 'description' => 'Discount total'],
-    ['value' => 'get_total_tax', 'label' => 'get_total_tax()', 'description' => 'Total tax'],
-    ['value' => 'get_shipping_total', 'label' => 'get_shipping_total()', 'description' => 'Shipping total'],
-    ['value' => 'get_cart', 'label' => 'get_cart()', 'description' => 'Cart contents'],
-    ['value' => 'get_fees', 'label' => 'get_fees()', 'description' => 'Fees'],
-    ['value' => 'get_coupons', 'label' => 'get_coupons()', 'description' => 'Coupons'],
-    ['value' => 'get_applied_coupons', 'label' => 'get_applied_coupons()', 'description' => 'Applied coupons'],
-    ['value' => 'get_shipping_packages', 'label' => 'get_shipping_packages()', 'description' => 'Shipping packages']
-];
-
-$cart_item_methods = [
-    ['value' => 'get_name', 'label' => 'get_name()', 'description' => 'Product name'],
-    ['value' => 'get_price', 'label' => 'get_price()', 'description' => 'Product price'],
-    ['value' => 'get_regular_price', 'label' => 'get_regular_price()', 'description' => 'Regular price'],
-    ['value' => 'get_sale_price', 'label' => 'get_sale_price()', 'description' => 'Sale price'],
-    ['value' => 'get_sku', 'label' => 'get_sku()', 'description' => 'SKU'],
-    ['value' => 'get_stock_status', 'label' => 'get_stock_status()', 'description' => 'Stock status'],
-    ['value' => 'get_meta', 'label' => 'get_meta()', 'description' => 'Meta by key']
-];
-
 $option_keys = [
     ['value' => 'siteurl', 'label' => 'siteurl', 'description' => 'WordPress Address (URL)'],
     ['value' => 'home', 'label' => 'home', 'description' => 'Site Address (URL)'],
@@ -200,8 +161,8 @@ $option_keys = [
 $snippet_templates = [
     'WordPress core' => [
         'pre_var_dump' => [
-            'label' => 'Dump: echo <pre> + var_dump',
-            'code' => "<?php\necho '<pre>';\nvar_dump({{value}});\necho '</pre>';",
+            'label' => 'Dump: var_dump',
+            'code' => "<?php\nvar_dump({{value}});",
             'vars' => [
                 ['name' => 'value', 'label' => 'Expression', 'default' => '', 'type' => 'text']
             ]
@@ -248,18 +209,18 @@ $snippet_templates = [
         ],
         'options_autoload_top' => [
             'label' => 'Options: top autoloaded (size)',
-            'code' => "<?php\nglobal \$wpdb;\n\$limit = max(1, (int) {{limit}});\n\$autoload_values = wp_autoload_values_to_autoload();\nif (!is_array(\$autoload_values) || empty(\$autoload_values)) {\n    \$autoload_values = ['yes'];\n}\n\$format_size = function (\$bytes) {\n    \$units = ['B', 'KB', 'MB', 'GB', 'TB'];\n    \$bytes = (float) \$bytes;\n    \$i = 0;\n    while (\$bytes >= 1024 && \$i < count(\$units) - 1) {\n        \$bytes /= 1024;\n        \$i++;\n    }\n    return number_format(\$bytes, \$i === 0 ? 0 : 2) . ' ' . \$units[\$i];\n};\n\$placeholders = implode(',', array_fill(0, count(\$autoload_values), '%s'));\n\$sql = \"SELECT option_name, LENGTH(option_value) AS size, autoload FROM {\$wpdb->options} WHERE autoload IN (\$placeholders) ORDER BY size DESC LIMIT %d\";\n\$params = array_merge(\$autoload_values, [\$limit]);\n\$rows = \$wpdb->get_results(\n    \$wpdb->prepare(\$sql, \$params),\n    ARRAY_A\n);\nforeach (\$rows as &\$row) {\n    \$row['size_human'] = \$format_size(isset(\$row['size']) ? \$row['size'] : 0);\n}\nunset(\$row);\necho Ajax_Snippets_Table::render(\$rows, 'Autoloaded Options');",
+            'code' => "<?php\nglobal \$wpdb;\n\$limit = max(1, (int) {{limit}});\n\$autoload_values = wp_autoload_values_to_autoload();\n\$format_size = function (\$bytes) {\n    \$units = ['B', 'KB', 'MB', 'GB', 'TB'];\n    \$bytes = (float) \$bytes;\n    \$i = 0;\n    while (\$bytes >= 1024 && \$i < count(\$units) - 1) {\n        \$bytes /= 1024;\n        \$i++;\n    }\n    return number_format(\$bytes, \$i === 0 ? 0 : 2) . ' ' . \$units[\$i];\n};\n\$placeholders = implode(',', array_fill(0, count(\$autoload_values), '%s'));\n\$sql = \"SELECT option_name, LENGTH(option_value) AS size, autoload FROM {\$wpdb->options} WHERE autoload IN (\$placeholders) ORDER BY size DESC LIMIT %d\";\n\$params = array_merge(\$autoload_values, [\$limit]);\n\$rows = \$wpdb->get_results(\n    \$wpdb->prepare(\$sql, \$params),\n    ARRAY_A\n);\nforeach (\$rows as &\$row) {\n    \$row['size_human'] = \$format_size(isset(\$row['size']) ? \$row['size'] : 0);\n}\nunset(\$row);\necho Ajax_Snippets_Table::render(\$rows, 'Autoloaded Options');",
             'vars' => [
                 ['name' => 'limit', 'label' => 'Limit', 'default' => '20', 'type' => 'number']
             ]
         ],
         'options_autoload_total' => [
             'label' => 'Options: autoload total size',
-            'code' => "<?php\nglobal \$wpdb;\n\$autoload_values = wp_autoload_values_to_autoload();\nif (!is_array(\$autoload_values) || empty(\$autoload_values)) {\n    \$autoload_values = ['yes'];\n}\n\$format_size = function (\$bytes) {\n    \$units = ['B', 'KB', 'MB', 'GB', 'TB'];\n    \$bytes = (float) \$bytes;\n    \$i = 0;\n    while (\$bytes >= 1024 && \$i < count(\$units) - 1) {\n        \$bytes /= 1024;\n        \$i++;\n    }\n    return number_format(\$bytes, \$i === 0 ? 0 : 2) . ' ' . \$units[\$i];\n};\n\$placeholders = implode(',', array_fill(0, count(\$autoload_values), '%s'));\n\$sql = \"SELECT SUM(LENGTH(option_value)) AS total_size, COUNT(*) AS total_count FROM {\$wpdb->options} WHERE autoload IN (\$placeholders)\";\n\$row = \$wpdb->get_row(\n    \$wpdb->prepare(\$sql, \$autoload_values),\n    ARRAY_A\n);\n\$total_bytes = isset(\$row['total_size']) ? (int) \$row['total_size'] : 0;\n\$data = [\n    'total_size_bytes' => \$total_bytes,\n    'total_size_human' => \$format_size(\$total_bytes),\n    'total_count' => isset(\$row['total_count']) ? (int) \$row['total_count'] : 0\n];\necho Ajax_Snippets_Table::render(\$data, 'Autoload Total Size');"
+            'code' => "<?php\nglobal \$wpdb;\n\$autoload_values = wp_autoload_values_to_autoload();\n\$format_size = function (\$bytes) {\n    \$units = ['B', 'KB', 'MB', 'GB', 'TB'];\n    \$bytes = (float) \$bytes;\n    \$i = 0;\n    while (\$bytes >= 1024 && \$i < count(\$units) - 1) {\n        \$bytes /= 1024;\n        \$i++;\n    }\n    return number_format(\$bytes, \$i === 0 ? 0 : 2) . ' ' . \$units[\$i];\n};\n\$placeholders = implode(',', array_fill(0, count(\$autoload_values), '%s'));\n\$sql = \"SELECT SUM(LENGTH(option_value)) AS total_size, COUNT(*) AS total_count FROM {\$wpdb->options} WHERE autoload IN (\$placeholders)\";\n\$row = \$wpdb->get_row(\n    \$wpdb->prepare(\$sql, \$autoload_values),\n    ARRAY_A\n);\n\$total_bytes = isset(\$row['total_size']) ? (int) \$row['total_size'] : 0;\n\$data = [\n    'total_size_bytes' => \$total_bytes,\n    'total_size_human' => \$format_size(\$total_bytes),\n    'total_count' => isset(\$row['total_count']) ? (int) \$row['total_count'] : 0\n];\necho Ajax_Snippets_Table::render(\$data, 'Autoload Total Size');"
         ],
         'option_owner' => [
             'label' => 'Options: find plugin usage',
-            'code' => "<?php\n\$option_name = '{{option_name}}';\n\$scope = '{{scope}}';\n\$deep = '{{deep}}' === 'yes';\n\$max_files = max(1, (int) {{max_files}});\nif (!\$option_name) {\n    echo Ajax_Snippets_Table::render([], 'Option Owner');\n    return;\n}\nif (!function_exists('get_plugins')) {\n    require_once ABSPATH . 'wp-admin/includes/plugin.php';\n}\n\$all_plugins = function_exists('get_plugins') ? get_plugins() : [];\n\$active_plugins = (array) get_option('active_plugins', []);\n\$network_active = function_exists('get_site_option') ? array_keys((array) get_site_option('active_sitewide_plugins', [])) : [];\n\$active_map = array_fill_keys(array_merge(\$active_plugins, \$network_active), true);\n\$plugin_dirs = [];\n\$plugin_labels = [];\nforeach (\$all_plugins as \$file => \$data) {\n    \$dir = dirname(\$file);\n    \$dir = \$dir === '.' ? '' : \$dir;\n    \$name = isset(\$data['Name']) ? \$data['Name'] : \$file;\n    if (!isset(\$plugin_labels[\$dir])) {\n        \$plugin_labels[\$dir] = \$name;\n    }\n    if (\$scope === 'all') {\n        \$plugin_dirs[\$dir] = true;\n    } elseif (\$scope === 'active') {\n        if (isset(\$active_map[\$file])) {\n            \$plugin_dirs[\$dir] = true;\n        }\n    }\n}\nif (\$scope === 'mu' && defined('WPMU_PLUGIN_DIR')) {\n    \$plugin_dirs = ['' => true];\n}\nif (\$scope === 'all' || \$scope === 'active') {\n    if (empty(\$plugin_dirs)) {\n        echo Ajax_Snippets_Table::render([], 'Option Owner');\n        return;\n    }\n}\n\$base_paths = [];\nif (\$scope === 'mu' && defined('WPMU_PLUGIN_DIR')) {\n    \$base_paths[] = WPMU_PLUGIN_DIR;\n} else {\n    foreach (array_keys(\$plugin_dirs) as \$dir) {\n        \$base_paths[] = rtrim(WP_PLUGIN_DIR . '/' . \$dir, '/');\n    }\n}\n\$matches = [];\n\$matches_key = [];\n\$add_match = function (\$relative, \$reason) use (&\$matches, &\$matches_key, \$plugin_labels) {\n    \$plugin_dir = dirname(\$relative);\n    \$plugin_dir = \$plugin_dir === '.' ? '' : \$plugin_dir;\n    \$plugin_name = isset(\$plugin_labels[\$plugin_dir]) ? \$plugin_labels[\$plugin_dir] : (\$plugin_dir ?: 'mu-plugins');\n    \$key = \$plugin_name . '|' . \$relative . '|' . \$reason;\n    if (isset(\$matches_key[\$key])) {\n        return;\n    }\n    \$matches_key[\$key] = true;\n    \$matches[] = [\n        'plugin' => \$plugin_name,\n        'file' => \$relative,\n        'reason' => \$reason\n    ];\n};\n\$const_values = [];\n\$const_usages = [];\n\$var_string_map = [];\n\$var_const_map = [];\n\$var_usages = [];\n\$scanned = 0;\nforeach (\$base_paths as \$base) {\n    if (!is_dir(\$base)) {\n        continue;\n    }\n    \$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(\$base, FilesystemIterator::SKIP_DOTS));\n    foreach (\$iterator as \$file) {\n        if (\$scanned >= \$max_files) {\n            break 2;\n        }\n        if (!\$file->isFile() || \$file->getExtension() !== 'php') {\n            continue;\n        }\n        \$scanned++;\n        \$path = \$file->getPathname();\n        \$contents = @file_get_contents(\$path);\n        if (\$contents === false) {\n            continue;\n        }\n        \$relative = str_replace(WP_PLUGIN_DIR . '/', '', \$path);\n        \$reasons = [];\n        if (preg_match('/[\\'\\\"]' . preg_quote(\$option_name, '/') . '[\\'\\\"]/', \$contents)) {\n            \$reasons[] = 'literal';\n        }\n        \$consts = [];\n        if (preg_match_all('/define\\(\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*,\\s*[\\'\\\"]' . preg_quote(\$option_name, '/') . '[\\'\\\"]\\s*\\)/', \$contents, \$m)) {\n            \$consts = array_unique(\$m[1]);\n        }\n        foreach (\$consts as \$const) {\n            if (preg_match('/get_option\\s*\\(\\s*' . preg_quote(\$const, '/') . '\\s*[\\),]/', \$contents)) {\n                \$reasons[] = 'define->get_option';\n                break;\n            }\n        }\n        \$vars = [];\n        if (preg_match_all('/\\$([A-Za-z0-9_]+)\\s*=\\s*[\\'\\\"]' . preg_quote(\$option_name, '/') . '[\\'\\\"]/', \$contents, \$m)) {\n            \$vars = array_unique(\$m[1]);\n        }\n        foreach (\$vars as \$var) {\n            if (preg_match('/get_option\\s*\\(\\s*\\$' . preg_quote(\$var, '/') . '\\s*[\\),]/', \$contents)) {\n                \$reasons[] = 'var->get_option';\n                break;\n            }\n        }\n        if (!empty(\$reasons)) {\n            \$add_match(\$relative, implode(', ', array_unique(\$reasons)));\n        }\n        if (!\$deep) {\n            continue;\n        }\n        if (preg_match_all('/define\\(\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*,\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*\\)/', \$contents, \$m, PREG_SET_ORDER)) {\n            foreach (\$m as \$row) {\n                \$const_values[\$row[1]] = \$row[2];\n            }\n        }\n        if (preg_match_all('/get_option\\s*\\(\\s*([A-Z0-9_]+)\\s*[\\),]/', \$contents, \$m)) {\n            foreach (array_unique(\$m[1]) as \$const) {\n                \$const_usages[] = ['file' => \$relative, 'const' => \$const];\n            }\n        }\n        if (preg_match_all('/\\$([A-Za-z0-9_]+)\\s*=\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*;/', \$contents, \$m, PREG_SET_ORDER)) {\n            foreach (\$m as \$row) {\n                \$var_string_map[\$relative][\$row[1]] = \$row[2];\n            }\n        }\n        if (preg_match_all('/\\$([A-Za-z0-9_]+)\\s*=\\s*([A-Z0-9_]+)\\s*;/', \$contents, \$m, PREG_SET_ORDER)) {\n            foreach (\$m as \$row) {\n                \$var_const_map[\$relative][\$row[1]] = \$row[2];\n            }\n        }\n        if (preg_match_all('/get_option\\s*\\(\\s*\\$([A-Za-z0-9_]+)\\s*[\\),]/', \$contents, \$m)) {\n            foreach (array_unique(\$m[1]) as \$var) {\n                \$var_usages[] = ['file' => \$relative, 'var' => \$var];\n            }\n        }\n    }\n}\nif (\$deep) {\n    foreach (\$const_usages as \$usage) {\n        \$const = \$usage['const'];\n        if (isset(\$const_values[\$const]) && \$const_values[\$const] === \$option_name) {\n            \$add_match(\$usage['file'], 'const->get_option (cross-file)');\n        }\n    }\n    foreach (\$var_usages as \$usage) {\n        \$file = \$usage['file'];\n        \$var = \$usage['var'];\n        if (isset(\$var_string_map[\$file][\$var]) && \$var_string_map[\$file][\$var] === \$option_name) {\n            \$add_match(\$file, 'var->get_option (deep)');\n            continue;\n        }\n        if (isset(\$var_const_map[\$file][\$var])) {\n            \$const = \$var_const_map[\$file][\$var];\n            if (isset(\$const_values[\$const]) && \$const_values[\$const] === \$option_name) {\n                \$add_match(\$file, 'var->const->get_option (deep)');\n            }\n        }\n    }\n}\necho Ajax_Snippets_Table::render([\n    'option' => \$option_name,\n    'scope' => \$scope,\n    'deep' => \$deep,\n    'scanned_files' => \$scanned,\n    'matches' => \$matches\n], 'Option Owner');",
+            'code' => "<?php\n\$option_name = '{{option_name}}';\n\$scope = '{{scope}}';\n\$deep = '{{deep}}' === 'yes';\n\$max_files = max(1, (int) {{max_files}});\nif (!\$option_name) {\n    echo Ajax_Snippets_Table::render([], 'Option Owner');\n    return;\n}\nif (!function_exists('get_plugins')) {\n    require_once ABSPATH . 'wp-admin/includes/plugin.php';\n}\n\$all_plugins = function_exists('get_plugins') ? get_plugins() : [];\n\$active_plugins = (array) get_option('active_plugins', []);\n\$network_active = function_exists('get_site_option') ? array_keys((array) get_site_option('active_sitewide_plugins', [])) : [];\n\$active_map = array_fill_keys(array_merge(\$active_plugins, \$network_active), true);\n\$plugin_dirs = [];\n\$plugin_labels = [];\nforeach (\$all_plugins as \$file => \$data) {\n    \$dir = dirname(\$file);\n    \$dir = \$dir === '.' ? '' : \$dir;\n    \$name = isset(\$data['Name']) ? \$data['Name'] : \$file;\n    if (!isset(\$plugin_labels[\$dir])) {\n        \$plugin_labels[\$dir] = \$name;\n    }\n    if (\$scope === 'all') {\n        \$plugin_dirs[\$dir] = true;\n    } elseif (\$scope === 'active') {\n        if (isset(\$active_map[\$file])) {\n            \$plugin_dirs[\$dir] = true;\n        }\n    }\n}\nif (\$scope === 'mu' && defined('WPMU_PLUGIN_DIR')) {\n    \$plugin_dirs = ['' => true];\n}\nif (\$scope === 'all' || \$scope === 'active') {\n    if (empty(\$plugin_dirs)) {\n        echo Ajax_Snippets_Table::render([], 'Option Owner');\n        return;\n    }\n}\n\$base_paths = [];\nif (\$scope === 'mu' && defined('WPMU_PLUGIN_DIR')) {\n    \$base_paths[] = WPMU_PLUGIN_DIR;\n} else {\n    foreach (array_keys(\$plugin_dirs) as \$dir) {\n        \$base_paths[] = rtrim(WP_PLUGIN_DIR . '/' . \$dir, '/');\n    }\n}\n\$matches = [];\n\$matches_key = [];\n\$add_match = function (\$relative, \$reason) use (&\$matches, &\$matches_key, \$plugin_labels) {\n    \$plugin_dir = dirname(\$relative);\n    \$plugin_dir = \$plugin_dir === '.' ? '' : \$plugin_dir;\n    \$plugin_name = isset(\$plugin_labels[\$plugin_dir]) ? \$plugin_labels[\$plugin_dir] : (\$plugin_dir ?: 'mu-plugins');\n    \$key = \$plugin_name . '|' . \$relative . '|' . \$reason;\n    if (isset(\$matches_key[\$key])) {\n        return;\n    }\n    \$matches_key[\$key] = true;\n    \$matches[] = [\n        'plugin' => \$plugin_name,\n        'file' => \$relative,\n        'reason' => \$reason\n    ];\n};\n\$option_fns = 'get_option|update_option|delete_option|add_option|get_site_option|update_site_option|delete_site_option|add_site_option';\n\$escaped = preg_quote(\$option_name, '/');\n\$const_values = [];\n\$const_usages = [];\n\$var_string_map = [];\n\$var_const_map = [];\n\$var_usages = [];\n\$scanned = 0;\nforeach (\$base_paths as \$base) {\n    if (!is_dir(\$base)) {\n        continue;\n    }\n    \$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(\$base, FilesystemIterator::SKIP_DOTS));\n    foreach (\$iterator as \$file) {\n        if (\$scanned >= \$max_files) {\n            break 2;\n        }\n        if (!\$file->isFile() || \$file->getExtension() !== 'php') {\n            continue;\n        }\n        \$scanned++;\n        \$path = \$file->getPathname();\n        \$contents = @file_get_contents(\$path);\n        if (\$contents === false) {\n            continue;\n        }\n        \$relative = str_replace(WP_PLUGIN_DIR . '/', '', \$path);\n        \$reasons = [];\n        if (preg_match('/\\b(?:' . \$option_fns . ')\\s*\\(\\s*[\\'\\\"]' . \$escaped . '[\\'\\\"]/', \$contents)) {\n            \$reasons[] = 'direct';\n        }\n        \$consts = [];\n        if (preg_match_all('/define\\(\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*,\\s*[\\'\\\"]' . \$escaped . '[\\'\\\"]\\s*\\)/', \$contents, \$m)) {\n            \$consts = array_unique(\$m[1]);\n        }\n        foreach (\$consts as \$const) {\n            if (preg_match('/\\b(?:' . \$option_fns . ')\\s*\\(\\s*' . preg_quote(\$const, '/') . '\\s*[\\),]/', \$contents)) {\n                \$reasons[] = 'define->options_fn';\n                break;\n            }\n        }\n        \$vars = [];\n        if (preg_match_all('/\\$([A-Za-z0-9_]+)\\s*=\\s*[\\'\\\"]' . \$escaped . '[\\'\\\"]/', \$contents, \$m)) {\n            \$vars = array_unique(\$m[1]);\n        }\n        foreach (\$vars as \$var) {\n            if (preg_match('/\\b(?:' . \$option_fns . ')\\s*\\(\\s*\\$' . preg_quote(\$var, '/') . '\\s*[\\),]/', \$contents)) {\n                \$reasons[] = 'var->options_fn';\n                break;\n            }\n        }\n        if (!empty(\$reasons)) {\n            \$add_match(\$relative, implode(', ', array_unique(\$reasons)));\n        }\n        if (!\$deep) {\n            continue;\n        }\n        if (preg_match_all('/define\\(\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*,\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*\\)/', \$contents, \$m, PREG_SET_ORDER)) {\n            foreach (\$m as \$row) {\n                \$const_values[\$row[1]] = \$row[2];\n            }\n        }\n        if (preg_match_all('/\\b(?:' . \$option_fns . ')\\s*\\(\\s*([A-Z0-9_]+)\\s*[\\),]/', \$contents, \$m)) {\n            foreach (array_unique(\$m[1]) as \$const) {\n                \$const_usages[] = ['file' => \$relative, 'const' => \$const];\n            }\n        }\n        if (preg_match_all('/\\$([A-Za-z0-9_]+)\\s*=\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*;/', \$contents, \$m, PREG_SET_ORDER)) {\n            foreach (\$m as \$row) {\n                \$var_string_map[\$relative][\$row[1]] = \$row[2];\n            }\n        }\n        if (preg_match_all('/\\$([A-Za-z0-9_]+)\\s*=\\s*([A-Z0-9_]+)\\s*;/', \$contents, \$m, PREG_SET_ORDER)) {\n            foreach (\$m as \$row) {\n                \$var_const_map[\$relative][\$row[1]] = \$row[2];\n            }\n        }\n        if (preg_match_all('/\\b(?:' . \$option_fns . ')\\s*\\(\\s*\\$([A-Za-z0-9_]+)\\s*[\\),]/', \$contents, \$m)) {\n            foreach (array_unique(\$m[1]) as \$var) {\n                \$var_usages[] = ['file' => \$relative, 'var' => \$var];\n            }\n        }\n    }\n}\nif (\$deep) {\n    foreach (\$const_usages as \$usage) {\n        \$const = \$usage['const'];\n        if (isset(\$const_values[\$const]) && \$const_values[\$const] === \$option_name) {\n            \$add_match(\$usage['file'], 'const->options_fn (cross-file)');\n        }\n    }\n    foreach (\$var_usages as \$usage) {\n        \$file = \$usage['file'];\n        \$var = \$usage['var'];\n        if (isset(\$var_string_map[\$file][\$var]) && \$var_string_map[\$file][\$var] === \$option_name) {\n            \$add_match(\$file, 'var->options_fn (deep)');\n            continue;\n        }\n        if (isset(\$var_const_map[\$file][\$var])) {\n            \$const = \$var_const_map[\$file][\$var];\n            if (isset(\$const_values[\$const]) && \$const_values[\$const] === \$option_name) {\n                \$add_match(\$file, 'var->const->options_fn (deep)');\n            }\n        }\n    }\n}\necho Ajax_Snippets_Table::render([\n    'option' => \$option_name,\n    'scope' => \$scope,\n    'deep' => \$deep,\n    'scanned_files' => \$scanned,\n    'matches' => \$matches\n], 'Option Owner');",
             'vars' => [
                 ['name' => 'option_name', 'label' => 'Option name', 'default' => '', 'type' => 'text'],
                 [
@@ -366,16 +327,9 @@ $snippet_templates = [
 
 $batch_fetch_templates = [
     'WordPress core' => [
-        'pre_var_dump' => [
-            'label' => 'Dump: echo <pre> + var_dump',
-            'code' => "<?php\necho '<pre>';\nvar_dump({{value}});\necho '</pre>';",
-            'vars' => [
-                ['name' => 'value', 'label' => 'Expression', 'default' => '', 'type' => 'text']
-            ]
-        ],
         'options_autoload_all' => [
             'label' => 'Options: autoloaded (names)',
-            'code' => "<?php\nglobal \$wpdb;\n\$autoload_values = wp_autoload_values_to_autoload();\nif (!is_array(\$autoload_values) || empty(\$autoload_values)) {\n    \$autoload_values = ['yes'];\n}\n\$placeholders = implode(',', array_fill(0, count(\$autoload_values), '%s'));\n\$sql = \"SELECT option_name FROM {\$wpdb->options} WHERE autoload IN (\$placeholders)\";\n\$names = \$wpdb->get_col(\n    \$wpdb->prepare(\$sql, \$autoload_values)\n);\nreturn array_values(array_filter((array) \$names));"
+            'code' => "<?php\nglobal \$wpdb;\n\$autoload_values = wp_autoload_values_to_autoload();\n\$placeholders = implode(',', array_fill(0, count(\$autoload_values), '%s'));\n\$sql = \"SELECT option_name FROM {\$wpdb->options} WHERE autoload IN (\$placeholders)\";\n\$names = \$wpdb->get_col(\n    \$wpdb->prepare(\$sql, \$autoload_values)\n);\nreturn array_values(array_filter((array) \$names));"
         ],
         'options_all' => [
             'label' => 'Options: all names',
@@ -417,15 +371,15 @@ $batch_fetch_templates = [
 $batch_process_templates = [
     'WordPress core' => [
         'pre_var_dump' => [
-            'label' => 'Dump: echo <pre> + var_dump',
-            'code' => "<?php\necho '<pre>';\nvar_dump({{value}});\necho '</pre>';",
+            'label' => 'Dump: var_dump',
+            'code' => "<?php\nvar_dump({{value}});",
             'vars' => [
                 ['name' => 'value', 'label' => 'Expression', 'default' => '', 'type' => 'text']
             ]
         ],
         'option_owner_batch' => [
             'label' => 'Options: find plugin usage (batch)',
-            'code' => "<?php\n\$option_name = \$item;\n\$scope = '{{scope}}';\n\$mode = '{{mode}}';\n\$deep = \$mode === 'deep';\n\$light = \$mode === 'light';\n\$max_files = max(1, (int) {{max_files}});\nif (!\$option_name) {\n    echo Ajax_Snippets_Table::render([], 'Option Owner');\n    return;\n}\nif (!function_exists('get_plugins')) {\n    require_once ABSPATH . 'wp-admin/includes/plugin.php';\n}\n\$all_plugins = function_exists('get_plugins') ? get_plugins() : [];\n\$active_plugins = (array) get_option('active_plugins', []);\n\$network_active = function_exists('get_site_option') ? array_keys((array) get_site_option('active_sitewide_plugins', [])) : [];\n\$active_map = array_fill_keys(array_merge(\$active_plugins, \$network_active), true);\n\$plugin_dirs = [];\n\$plugin_labels = [];\nforeach (\$all_plugins as \$file => \$data) {\n    \$dir = dirname(\$file);\n    \$dir = \$dir === '.' ? '' : \$dir;\n    \$name = isset(\$data['Name']) ? \$data['Name'] : \$file;\n    if (!isset(\$plugin_labels[\$dir])) {\n        \$plugin_labels[\$dir] = \$name;\n    }\n    if (\$scope === 'all') {\n        \$plugin_dirs[\$dir] = true;\n    } elseif (\$scope === 'active') {\n        if (isset(\$active_map[\$file])) {\n            \$plugin_dirs[\$dir] = true;\n        }\n    }\n}\nif (\$scope === 'mu' && defined('WPMU_PLUGIN_DIR')) {\n    \$plugin_dirs = ['' => true];\n}\nif (\$scope === 'all' || \$scope === 'active') {\n    if (empty(\$plugin_dirs)) {\n        echo Ajax_Snippets_Table::render([], 'Option Owner');\n        return;\n    }\n}\n\$base_paths = [];\nif (\$scope === 'mu' && defined('WPMU_PLUGIN_DIR')) {\n    \$base_paths[] = WPMU_PLUGIN_DIR;\n} else {\n    foreach (array_keys(\$plugin_dirs) as \$dir) {\n        \$base_paths[] = rtrim(WP_PLUGIN_DIR . '/' . \$dir, '/');\n    }\n}\n\$matches = [];\n\$matches_key = [];\n\$add_match = function (\$relative, \$reason) use (&\$matches, &\$matches_key, \$plugin_labels) {\n    \$plugin_dir = dirname(\$relative);\n    \$plugin_dir = \$plugin_dir === '.' ? '' : \$plugin_dir;\n    \$plugin_name = isset(\$plugin_labels[\$plugin_dir]) ? \$plugin_labels[\$plugin_dir] : (\$plugin_dir ?: 'mu-plugins');\n    \$key = \$plugin_name . '|' . \$relative . '|' . \$reason;\n    if (isset(\$matches_key[\$key])) {\n        return;\n    }\n    \$matches_key[\$key] = true;\n    \$matches[] = [\n        'plugin' => \$plugin_name,\n        'file' => \$relative,\n        'reason' => \$reason\n    ];\n};\nif (\$light) {\n    \$prefix = strtolower(preg_replace('/[^a-z0-9_]+/', '_', \$option_name));\n    \$prefix = preg_replace('/_+/', '_', \$prefix);\n    \$chunks = explode('_', trim(\$prefix, '_'));\n    \$candidates = [];\n    if (!empty(\$chunks)) {\n        \$candidates[] = \$chunks[0];\n        if (count(\$chunks) > 1) {\n            \$candidates[] = \$chunks[0] . '_' . \$chunks[1];\n        }\n    }\n    \$candidates = array_unique(array_filter(\$candidates));\n    foreach (\$all_plugins as \$file => \$data) {\n        if (\$scope === 'active' && !isset(\$active_map[\$file])) {\n            continue;\n        }\n        \$slug = dirname(\$file);\n        \$slug = \$slug === '.' ? basename(\$file, '.php') : \$slug;\n        \$name = isset(\$data['Name']) ? \$data['Name'] : \$file;\n        foreach (\$candidates as \$candidate) {\n            if (\$candidate && stripos(\$slug, \$candidate) !== false) {\n                \$matches[] = [\n                    'plugin' => \$name,\n                    'file' => \$file,\n                    'reason' => 'prefix-heuristic:' . \$candidate\n                ];\n                break;\n            }\n        }\n    }\n    echo Ajax_Snippets_Table::render([\n        'option' => \$option_name,\n        'scope' => \$scope,\n        'mode' => 'light',\n        'scanned_files' => 0,\n        'matches' => \$matches\n    ], 'Option Owner');\n    return;\n}\n\$const_values = [];\n\$const_usages = [];\n\$var_string_map = [];\n\$var_const_map = [];\n\$var_usages = [];\n\$scanned = 0;\nforeach (\$base_paths as \$base) {\n    if (!is_dir(\$base)) {\n        continue;\n    }\n    \$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(\$base, FilesystemIterator::SKIP_DOTS));\n    foreach (\$iterator as \$file) {\n        if (\$scanned >= \$max_files) {\n            break 2;\n        }\n        if (!\$file->isFile() || \$file->getExtension() !== 'php') {\n            continue;\n        }\n        \$scanned++;\n        \$path = \$file->getPathname();\n        \$contents = @file_get_contents(\$path);\n        if (\$contents === false) {\n            continue;\n        }\n        \$relative = str_replace(WP_PLUGIN_DIR . '/', '', \$path);\n        \$reasons = [];\n        if (preg_match('/[\\'\\\"]' . preg_quote(\$option_name, '/') . '[\\'\\\"]/', \$contents)) {\n            \$reasons[] = 'literal';\n        }\n        \$consts = [];\n        if (preg_match_all('/define\\(\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*,\\s*[\\'\\\"]' . preg_quote(\$option_name, '/') . '[\\'\\\"]\\s*\\)/', \$contents, \$m)) {\n            \$consts = array_unique(\$m[1]);\n        }\n        foreach (\$consts as \$const) {\n            if (preg_match('/get_option\\s*\\(\\s*' . preg_quote(\$const, '/') . '\\s*[\\),]/', \$contents)) {\n                \$reasons[] = 'define->get_option';\n                break;\n            }\n        }\n        \$vars = [];\n        if (preg_match_all('/\\$([A-Za-z0-9_]+)\\s*=\\s*[\\'\\\"]' . preg_quote(\$option_name, '/') . '[\\'\\\"]/', \$contents, \$m)) {\n            \$vars = array_unique(\$m[1]);\n        }\n        foreach (\$vars as \$var) {\n            if (preg_match('/get_option\\s*\\(\\s*\\$' . preg_quote(\$var, '/') . '\\s*[\\),]/', \$contents)) {\n                \$reasons[] = 'var->get_option';\n                break;\n            }\n        }\n        if (!empty(\$reasons)) {\n            \$add_match(\$relative, implode(', ', array_unique(\$reasons)));\n        }\n        if (!\$deep) {\n            continue;\n        }\n        if (preg_match_all('/define\\(\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*,\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*\\)/', \$contents, \$m, PREG_SET_ORDER)) {\n            foreach (\$m as \$row) {\n                \$const_values[\$row[1]] = \$row[2];\n            }\n        }\n        if (preg_match_all('/get_option\\s*\\(\\s*([A-Z0-9_]+)\\s*[\\),]/', \$contents, \$m)) {\n            foreach (array_unique(\$m[1]) as \$const) {\n                \$const_usages[] = ['file' => \$relative, 'const' => \$const];\n            }\n        }\n        if (preg_match_all('/\\$([A-Za-z0-9_]+)\\s*=\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*;/', \$contents, \$m, PREG_SET_ORDER)) {\n            foreach (\$m as \$row) {\n                \$var_string_map[\$relative][\$row[1]] = \$row[2];\n            }\n        }\n        if (preg_match_all('/\\$([A-Za-z0-9_]+)\\s*=\\s*([A-Z0-9_]+)\\s*;/', \$contents, \$m, PREG_SET_ORDER)) {\n            foreach (\$m as \$row) {\n                \$var_const_map[\$relative][\$row[1]] = \$row[2];\n            }\n        }\n        if (preg_match_all('/get_option\\s*\\(\\s*\\$([A-Za-z0-9_]+)\\s*[\\),]/', \$contents, \$m)) {\n            foreach (array_unique(\$m[1]) as \$var) {\n                \$var_usages[] = ['file' => \$relative, 'var' => \$var];\n            }\n        }\n    }\n}\nif (\$deep) {\n    foreach (\$const_usages as \$usage) {\n        \$const = \$usage['const'];\n        if (isset(\$const_values[\$const]) && \$const_values[\$const] === \$option_name) {\n            \$add_match(\$usage['file'], 'const->get_option (cross-file)');\n        }\n    }\n    foreach (\$var_usages as \$usage) {\n        \$file = \$usage['file'];\n        \$var = \$usage['var'];\n        if (isset(\$var_string_map[\$file][\$var]) && \$var_string_map[\$file][\$var] === \$option_name) {\n            \$add_match(\$file, 'var->get_option (deep)');\n            continue;\n        }\n        if (isset(\$var_const_map[\$file][\$var])) {\n            \$const = \$var_const_map[\$file][\$var];\n            if (isset(\$const_values[\$const]) && \$const_values[\$const] === \$option_name) {\n                \$add_match(\$file, 'var->const->get_option (deep)');\n            }\n        }\n    }\n}\necho Ajax_Snippets_Table::render([\n    'option' => \$option_name,\n    'scope' => \$scope,\n    'deep' => \$deep,\n    'scanned_files' => \$scanned,\n    'matches' => \$matches\n], 'Option Owner');",
+            'code' => "<?php\n\$option_name = \$item;\n\$scope = '{{scope}}';\n\$mode = '{{mode}}';\n\$deep = \$mode === 'deep';\n\$light = \$mode === 'light';\n\$max_files = max(1, (int) {{max_files}});\n\$option_fns = 'get_option|update_option|delete_option|add_option|get_site_option|update_site_option|delete_site_option|add_site_option';\n\$escaped = preg_quote(\$option_name, '/');\nif (!\$option_name) {\n    echo Ajax_Snippets_Table::render([], 'Option Owner');\n    return;\n}\nif (!function_exists('get_plugins')) {\n    require_once ABSPATH . 'wp-admin/includes/plugin.php';\n}\n\$all_plugins = function_exists('get_plugins') ? get_plugins() : [];\n\$active_plugins = (array) get_option('active_plugins', []);\n\$network_active = function_exists('get_site_option') ? array_keys((array) get_site_option('active_sitewide_plugins', [])) : [];\n\$active_map = array_fill_keys(array_merge(\$active_plugins, \$network_active), true);\n\$plugin_dirs = [];\n\$plugin_labels = [];\nforeach (\$all_plugins as \$file => \$data) {\n    \$dir = dirname(\$file);\n    \$dir = \$dir === '.' ? '' : \$dir;\n    \$name = isset(\$data['Name']) ? \$data['Name'] : \$file;\n    if (!isset(\$plugin_labels[\$dir])) {\n        \$plugin_labels[\$dir] = \$name;\n    }\n    if (\$scope === 'all') {\n        \$plugin_dirs[\$dir] = true;\n    } elseif (\$scope === 'active') {\n        if (isset(\$active_map[\$file])) {\n            \$plugin_dirs[\$dir] = true;\n        }\n    }\n}\nif (\$scope === 'mu' && defined('WPMU_PLUGIN_DIR')) {\n    \$plugin_dirs = ['' => true];\n}\nif (\$scope === 'all' || \$scope === 'active') {\n    if (empty(\$plugin_dirs)) {\n        echo Ajax_Snippets_Table::render([], 'Option Owner');\n        return;\n    }\n}\n\$base_paths = [];\nif (\$scope === 'mu' && defined('WPMU_PLUGIN_DIR')) {\n    \$base_paths[] = WPMU_PLUGIN_DIR;\n} else {\n    foreach (array_keys(\$plugin_dirs) as \$dir) {\n        \$base_paths[] = rtrim(WP_PLUGIN_DIR . '/' . \$dir, '/');\n    }\n}\n\$matches = [];\n\$matches_key = [];\n\$add_match = function (\$relative, \$reason) use (&\$matches, &\$matches_key, \$plugin_labels) {\n    \$plugin_dir = dirname(\$relative);\n    \$plugin_dir = \$plugin_dir === '.' ? '' : \$plugin_dir;\n    \$plugin_name = isset(\$plugin_labels[\$plugin_dir]) ? \$plugin_labels[\$plugin_dir] : (\$plugin_dir ?: 'mu-plugins');\n    \$key = \$plugin_name . '|' . \$relative . '|' . \$reason;\n    if (isset(\$matches_key[\$key])) {\n        return;\n    }\n    \$matches_key[\$key] = true;\n    \$matches[] = [\n        'plugin' => \$plugin_name,\n        'file' => \$relative,\n        'reason' => \$reason\n    ];\n};\nif (\$light) {\n    \$prefix = strtolower(preg_replace('/[^a-z0-9_]+/', '_', \$option_name));\n    \$prefix = preg_replace('/_+/', '_', \$prefix);\n    \$chunks = explode('_', trim(\$prefix, '_'));\n    \$candidates = [];\n    if (!empty(\$chunks)) {\n        \$candidates[] = \$chunks[0];\n        if (count(\$chunks) > 1) {\n            \$candidates[] = \$chunks[0] . '_' . \$chunks[1];\n        }\n    }\n    \$candidates = array_unique(array_filter(\$candidates));\n    foreach (\$all_plugins as \$file => \$data) {\n        if (\$scope === 'active' && !isset(\$active_map[\$file])) {\n            continue;\n        }\n        \$slug = dirname(\$file);\n        \$slug = \$slug === '.' ? basename(\$file, '.php') : \$slug;\n        \$name = isset(\$data['Name']) ? \$data['Name'] : \$file;\n        foreach (\$candidates as \$candidate) {\n            if (\$candidate && stripos(\$slug, \$candidate) !== false) {\n                \$matches[] = [\n                    'plugin' => \$name,\n                    'file' => \$file,\n                    'reason' => 'prefix-heuristic:' . \$candidate\n                ];\n                break;\n            }\n        }\n    }\n    echo Ajax_Snippets_Table::render([\n        'option' => \$option_name,\n        'scope' => \$scope,\n        'mode' => 'light',\n        'scanned_files' => 0,\n        'matches' => \$matches\n    ], 'Option Owner');\n    return;\n}\n\$const_values = [];\n\$const_usages = [];\n\$var_string_map = [];\n\$var_const_map = [];\n\$var_usages = [];\n\$scanned = 0;\nforeach (\$base_paths as \$base) {\n    if (!is_dir(\$base)) {\n        continue;\n    }\n    \$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(\$base, FilesystemIterator::SKIP_DOTS));\n    foreach (\$iterator as \$file) {\n        if (\$scanned >= \$max_files) {\n            break 2;\n        }\n        if (!\$file->isFile() || \$file->getExtension() !== 'php') {\n            continue;\n        }\n        \$scanned++;\n        \$path = \$file->getPathname();\n        \$contents = @file_get_contents(\$path);\n        if (\$contents === false) {\n            continue;\n        }\n        \$relative = str_replace(WP_PLUGIN_DIR . '/', '', \$path);\n        \$reasons = [];\n        if (preg_match('/\\b(?:' . \$option_fns . ')\\s*\\(\\s*[\\'\\\"]' . \$escaped . '[\\'\\\"]/', \$contents)) {\n            \$reasons[] = 'direct';\n        }\n        \$consts = [];\n        if (preg_match_all('/define\\(\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*,\\s*[\\'\\\"]' . \$escaped . '[\\'\\\"]\\s*\\)/', \$contents, \$m)) {\n            \$consts = array_unique(\$m[1]);\n        }\n        foreach (\$consts as \$const) {\n            if (preg_match('/\\b(?:' . \$option_fns . ')\\s*\\(\\s*' . preg_quote(\$const, '/') . '\\s*[\\),]/', \$contents)) {\n                \$reasons[] = 'define->options_fn';\n                break;\n            }\n        }\n        \$vars = [];\n        if (preg_match_all('/\\$([A-Za-z0-9_]+)\\s*=\\s*[\\'\\\"]' . \$escaped . '[\\'\\\"]/', \$contents, \$m)) {\n            \$vars = array_unique(\$m[1]);\n        }\n        foreach (\$vars as \$var) {\n            if (preg_match('/\\b(?:' . \$option_fns . ')\\s*\\(\\s*\\$' . preg_quote(\$var, '/') . '\\s*[\\),]/', \$contents)) {\n                \$reasons[] = 'var->options_fn';\n                break;\n            }\n        }\n        if (!empty(\$reasons)) {\n            \$add_match(\$relative, implode(', ', array_unique(\$reasons)));\n        }\n        if (!\$deep) {\n            continue;\n        }\n        if (preg_match_all('/define\\(\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*,\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*\\)/', \$contents, \$m, PREG_SET_ORDER)) {\n            foreach (\$m as \$row) {\n                \$const_values[\$row[1]] = \$row[2];\n            }\n        }\n        if (preg_match_all('/\\b(?:' . \$option_fns . ')\\s*\\(\\s*([A-Z0-9_]+)\\s*[\\),]/', \$contents, \$m)) {\n            foreach (array_unique(\$m[1]) as \$const) {\n                \$const_usages[] = ['file' => \$relative, 'const' => \$const];\n            }\n        }\n        if (preg_match_all('/\\$([A-Za-z0-9_]+)\\s*=\\s*[\\'\\\"]([^\\'\\\"]+)[\\'\\\"]\\s*;/', \$contents, \$m, PREG_SET_ORDER)) {\n            foreach (\$m as \$row) {\n                \$var_string_map[\$relative][\$row[1]] = \$row[2];\n            }\n        }\n        if (preg_match_all('/\\$([A-Za-z0-9_]+)\\s*=\\s*([A-Z0-9_]+)\\s*;/', \$contents, \$m, PREG_SET_ORDER)) {\n            foreach (\$m as \$row) {\n                \$var_const_map[\$relative][\$row[1]] = \$row[2];\n            }\n        }\n        if (preg_match_all('/\\b(?:' . \$option_fns . ')\\s*\\(\\s*\\$([A-Za-z0-9_]+)\\s*[\\),]/', \$contents, \$m)) {\n            foreach (array_unique(\$m[1]) as \$var) {\n                \$var_usages[] = ['file' => \$relative, 'var' => \$var];\n            }\n        }\n    }\n}\nif (\$deep) {\n    foreach (\$const_usages as \$usage) {\n        \$const = \$usage['const'];\n        if (isset(\$const_values[\$const]) && \$const_values[\$const] === \$option_name) {\n            \$add_match(\$usage['file'], 'const->options_fn (cross-file)');\n        }\n    }\n    foreach (\$var_usages as \$usage) {\n        \$file = \$usage['file'];\n        \$var = \$usage['var'];\n        if (isset(\$var_string_map[\$file][\$var]) && \$var_string_map[\$file][\$var] === \$option_name) {\n            \$add_match(\$file, 'var->options_fn (deep)');\n            continue;\n        }\n        if (isset(\$var_const_map[\$file][\$var])) {\n            \$const = \$var_const_map[\$file][\$var];\n            if (isset(\$const_values[\$const]) && \$const_values[\$const] === \$option_name) {\n                \$add_match(\$file, 'var->const->options_fn (deep)');\n            }\n        }\n    }\n}\necho Ajax_Snippets_Table::render([\n    'option' => \$option_name,\n    'scope' => \$scope,\n    'deep' => \$deep,\n    'scanned_files' => \$scanned,\n    'matches' => \$matches\n], 'Option Owner');",
             'vars' => [
                 [
                     'name' => 'scope',
@@ -454,7 +408,7 @@ $batch_process_templates = [
         ],
         'user_dump' => [
             'label' => 'User: table user + meta',
-            'code' => "<?php\n\$user = get_user_by('id', \$item);\necho Ajax_Snippets_Table::render(\$user, 'User');\necho Ajax_Snippets_Table::render(get_user_meta(\$user->ID), 'User Meta');"
+            'code' => "<?php\n\$user = get_user_by('id', \$item);\nif (!\$user) {\n    echo Ajax_Snippets_Table::render(['id' => \$item, 'error' => 'User not found'], 'User');\n    return;\n}\necho Ajax_Snippets_Table::render(\$user, 'User');\necho Ajax_Snippets_Table::render(get_user_meta(\$user->ID), 'User Meta');"
         ],
         'post_dump' => [
             'label' => 'Post: table post + meta',
@@ -702,6 +656,254 @@ if ($has_wc) {
     ];
 }
 
+// ── Single-page: WordPress core ───────────────────────────────────────────────
+
+$snippet_templates['WordPress core']['db_tables'] = [
+    'label' => 'DB: tables size + rows',
+    'code' => "<?php\nglobal \$wpdb;\n\$rows = \$wpdb->get_results(\n    \"SELECT table_name AS name, table_rows AS rows, ROUND((data_length + index_length) / 1024, 2) AS size_kb FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY (data_length + index_length) DESC\",\n    ARRAY_A\n);\necho Ajax_Snippets_Table::render(\$rows, 'DB Tables');"
+];
+
+$snippet_templates['WordPress core']['php_env'] = [
+    'label' => 'PHP: environment info',
+    'code' => "<?php\n\$data = [\n    'php_version'        => PHP_VERSION,\n    'wp_version'         => get_bloginfo('version'),\n    'memory_limit'       => ini_get('memory_limit'),\n    'memory_usage'       => size_format(memory_get_usage(true)),\n    'memory_peak'        => size_format(memory_get_peak_usage(true)),\n    'max_execution_time' => ini_get('max_execution_time'),\n    'upload_max_filesize'=> ini_get('upload_max_filesize'),\n    'post_max_size'      => ini_get('post_max_size'),\n    'max_input_vars'     => ini_get('max_input_vars'),\n    'display_errors'     => ini_get('display_errors'),\n    'opcache_enabled'    => function_exists('opcache_get_status') ? (opcache_get_status(false) !== false ? 'yes' : 'no') : 'n/a',\n    'extensions'         => implode(', ', get_loaded_extensions())\n];\necho Ajax_Snippets_Table::render(\$data, 'PHP Environment');"
+];
+
+$snippet_templates['WordPress core']['plugins_active'] = [
+    'label' => 'Plugins: active list with versions',
+    'code' => "<?php\nif (!function_exists('get_plugins')) {\n    require_once ABSPATH . 'wp-admin/includes/plugin.php';\n}\n\$active = (array) get_option('active_plugins', []);\n\$all = get_plugins();\n\$items = [];\nforeach (\$active as \$file) {\n    \$info = isset(\$all[\$file]) ? \$all[\$file] : [];\n    \$items[] = [\n        'file'    => \$file,\n        'name'    => isset(\$info['Name'])    ? \$info['Name']    : \$file,\n        'version' => isset(\$info['Version']) ? \$info['Version'] : '',\n        'author'  => isset(\$info['Author'])  ? \$info['Author']  : ''\n    ];\n}\necho Ajax_Snippets_Table::render(\$items, 'Active Plugins');"
+];
+
+$snippet_templates['WordPress core']['theme_info'] = [
+    'label' => 'Theme: active theme info',
+    'code' => "<?php\n\$theme  = wp_get_theme();\n\$parent = \$theme->parent();\n\$data = [\n    'name'           => \$theme->get('Name'),\n    'version'        => \$theme->get('Version'),\n    'author'         => \$theme->get('Author'),\n    'template'       => \$theme->get_template(),\n    'stylesheet'     => \$theme->get_stylesheet(),\n    'theme_dir'      => get_template_directory(),\n    'child_theme'    => \$parent ? 'yes' : 'no',\n    'parent_name'    => \$parent ? \$parent->get('Name')    : '',\n    'parent_version' => \$parent ? \$parent->get('Version') : ''\n];\necho Ajax_Snippets_Table::render(\$data, 'Active Theme');"
+];
+
+$snippet_templates['WordPress core']['user_meta_overview'] = [
+    'label' => 'User: meta keys + size',
+    'code' => "<?php\n\$user  = get_user_by('id', {{user_id}});\n\$items = [];\nif (\$user) {\n    \$meta = get_user_meta(\$user->ID);\n    foreach (\$meta as \$key => \$values) {\n        \$value = count(\$values) === 1 ? \$values[0] : \$values;\n        \$raw   = maybe_unserialize(\$value);\n        \$text  = is_scalar(\$raw) || \$raw === null ? (string) \$raw : wp_json_encode(\$raw);\n        \$items[] = [\n            'meta_key' => \$key,\n            'size'     => strlen(\$text),\n            'preview'  => substr(\$text, 0, 200)\n        ];\n    }\n}\necho Ajax_Snippets_Table::render(\$items, 'User Meta Overview');",
+    'vars' => [
+        ['name' => 'user_id', 'label' => 'User ID', 'default' => '', 'type' => 'number', 'source' => 'user']
+    ]
+];
+
+$snippet_templates['WordPress core']['post_types_list'] = [
+    'label' => 'Post types: all registered',
+    'code' => "<?php\n\$post_types = get_post_types([], 'objects');\n\$items = [];\nforeach (\$post_types as \$pt) {\n    \$items[] = [\n        'name'          => \$pt->name,\n        'label'         => \$pt->label,\n        'public'        => \$pt->public        ? 'yes' : 'no',\n        'hierarchical'  => \$pt->hierarchical  ? 'yes' : 'no',\n        'has_archive'   => \$pt->has_archive   ? 'yes' : 'no',\n        'show_in_rest'  => \$pt->show_in_rest  ? 'yes' : 'no',\n        'supports'      => implode(', ', get_all_post_type_supports(\$pt->name))\n    ];\n}\necho Ajax_Snippets_Table::render(\$items, 'Post Types');"
+];
+
+$snippet_templates['WordPress core']['taxonomies_list'] = [
+    'label' => 'Taxonomies: all registered',
+    'code' => "<?php\n\$taxonomies = get_taxonomies([], 'objects');\n\$items = [];\nforeach (\$taxonomies as \$tax) {\n    \$items[] = [\n        'name'         => \$tax->name,\n        'label'        => \$tax->label,\n        'public'       => \$tax->public       ? 'yes' : 'no',\n        'hierarchical' => \$tax->hierarchical ? 'yes' : 'no',\n        'show_in_rest' => \$tax->show_in_rest ? 'yes' : 'no',\n        'object_type'  => implode(', ', (array) \$tax->object_type)\n    ];\n}\necho Ajax_Snippets_Table::render(\$items, 'Taxonomies');"
+];
+
+$snippet_templates['WordPress core']['transients_expired'] = [
+    'label' => 'Transients: expired count + size',
+    'code' => "<?php\nglobal \$wpdb;\n\$now  = time();\n\$meta = \$wpdb->get_row(\n    \$wpdb->prepare(\n        \"SELECT COUNT(*) AS cnt, SUM(LENGTH(o.option_value)) AS total_size\n         FROM {\$wpdb->options} o\n         INNER JOIN {\$wpdb->options} t\n           ON t.option_name = CONCAT('_transient_timeout_', SUBSTRING(o.option_name, 12))\n         WHERE o.option_name LIKE '_transient_%'\n           AND o.option_name NOT LIKE '_transient_timeout_%'\n           AND t.option_value < %d\",\n        \$now\n    ),\n    ARRAY_A\n);\n\$rows = \$wpdb->get_results(\n    \$wpdb->prepare(\n        \"SELECT SUBSTRING(o.option_name, 12) AS transient, t.option_value AS expires\n         FROM {\$wpdb->options} o\n         INNER JOIN {\$wpdb->options} t\n           ON t.option_name = CONCAT('_transient_timeout_', SUBSTRING(o.option_name, 12))\n         WHERE o.option_name LIKE '_transient_%'\n           AND o.option_name NOT LIKE '_transient_timeout_%'\n           AND t.option_value < %d\n         ORDER BY t.option_value ASC\n         LIMIT 50\",\n        \$now\n    ),\n    ARRAY_A\n);\nforeach (\$rows as &\$row) {\n    \$row['expired_ago'] = human_time_diff((int) \$row['expires'], \$now) . ' ago';\n    unset(\$row['expires']);\n}\nunset(\$row);\necho Ajax_Snippets_Table::render([\n    'total_expired'    => isset(\$meta['cnt'])        ? (int) \$meta['cnt']        : 0,\n    'total_size_bytes' => isset(\$meta['total_size']) ? (int) \$meta['total_size'] : 0,\n    'sample_50'        => \$rows\n], 'Expired Transients');"
+];
+
+// ── Single-page: WooCommerce ──────────────────────────────────────────────────
+
+if ($has_wc) {
+    $snippet_templates['WooCommerce']['wc_product_variations'] = [
+        'label' => 'WC: product + variations',
+        'code' => "<?php\n\$product = wc_get_product({{product_id}});\nif (!\$product) {\n    echo Ajax_Snippets_Table::render(['error' => 'Product not found'], 'Product');\n    return;\n}\n\$data = [\n    'id'             => \$product->get_id(),\n    'name'           => \$product->get_name(),\n    'type'           => \$product->get_type(),\n    'sku'            => \$product->get_sku(),\n    'status'         => \$product->get_status(),\n    'price'          => \$product->get_price(),\n    'regular_price'  => \$product->get_regular_price(),\n    'sale_price'     => \$product->get_sale_price(),\n    'stock_status'   => \$product->get_stock_status(),\n    'stock_quantity' => \$product->get_stock_quantity()\n];\necho Ajax_Snippets_Table::render(\$data, 'Product');\nif (\$product->is_type('variable')) {\n    \$variations = \$product->get_available_variations();\n    echo Ajax_Snippets_Table::render(\$variations, 'Variations (' . count(\$variations) . ')');\n}",
+        'vars' => [
+            ['name' => 'product_id', 'label' => 'Product ID', 'default' => '', 'type' => 'number', 'source' => 'product']
+        ]
+    ];
+
+    $snippet_templates['WooCommerce']['wc_gateways'] = [
+        'label' => 'WC: payment gateways',
+        'code' => "<?php\n\$gateways = WC()->payment_gateways ? WC()->payment_gateways()->payment_gateways() : [];\n\$items = [];\nforeach (\$gateways as \$id => \$gateway) {\n    \$items[] = [\n        'id'           => \$id,\n        'title'        => \$gateway->get_title(),\n        'enabled'      => \$gateway->enabled === 'yes' ? 'yes' : 'no',\n        'available'    => \$gateway->is_available() ? 'yes' : 'no',\n        'method_title' => \$gateway->get_method_title()\n    ];\n}\necho Ajax_Snippets_Table::render(\$items, 'Payment Gateways');"
+    ];
+
+    $snippet_templates['WooCommerce']['wc_shipping_zones'] = [
+        'label' => 'WC: shipping zones + methods',
+        'code' => "<?php\n\$items = [];\n\$all_zones = array_merge([0 => ['id' => 0, 'zone_name' => 'Rest of the World']], WC_Shipping_Zones::get_zones());\nforeach (\$all_zones as \$zone_data) {\n    \$zone = new WC_Shipping_Zone(\$zone_data['id']);\n    foreach (\$zone->get_shipping_methods() as \$method) {\n        \$items[] = [\n            'zone_id'      => \$zone_data['id'],\n            'zone_name'    => \$zone_data['zone_name'],\n            'method_id'    => \$method->get_method_id(),\n            'method_title' => \$method->get_title(),\n            'enabled'      => \$method->is_enabled() ? 'yes' : 'no',\n            'cost'         => method_exists(\$method, 'get_option') ? \$method->get_option('cost', '') : ''\n        ];\n    }\n}\necho Ajax_Snippets_Table::render(\$items, 'Shipping Zones');"
+    ];
+}
+
+// ── Batch fetch: WordPress core ───────────────────────────────────────────────
+
+$batch_fetch_templates['WordPress core']['posts_by_type'] = [
+    'label' => 'Posts: by post type + status',
+    'code' => "<?php\n\$posts = get_posts([\n    'numberposts' => -1,\n    'post_type'   => '{{post_type}}',\n    'post_status' => '{{post_status}}',\n    'fields'      => 'ids'\n]);\nreturn \$posts;",
+    'vars' => [
+        ['name' => 'post_type',   'label' => 'Post type',   'default' => 'post',    'type' => 'text'],
+        ['name' => 'post_status', 'label' => 'Post status', 'default' => 'publish', 'type' => 'text']
+    ]
+];
+
+$batch_fetch_templates['WordPress core']['users_by_role'] = [
+    'label' => 'Users: by role',
+    'code' => "<?php\n\$users = get_users([\n    'role'   => '{{role}}',\n    'fields' => 'ID'\n]);\nreturn \$users;",
+    'vars' => [
+        ['name' => 'role', 'label' => 'Role (e.g. subscriber)', 'default' => 'subscriber', 'type' => 'text']
+    ]
+];
+
+$batch_fetch_templates['WordPress core']['attachments_no_parent'] = [
+    'label' => 'Attachments: without parent (orphaned)',
+    'code' => "<?php\n\$posts = get_posts([\n    'numberposts' => -1,\n    'post_type'   => 'attachment',\n    'post_status' => 'inherit',\n    'post_parent' => 0,\n    'fields'      => 'ids'\n]);\nreturn \$posts;"
+];
+
+// ── Batch fetch: WooCommerce ──────────────────────────────────────────────────
+
+if ($has_wc) {
+    $batch_fetch_templates['WooCommerce']['wc_orders_by_status'] = [
+        'label' => 'WC: orders by status',
+        'code' => "<?php\n\$query = new WC_Order_Query([\n    'limit'  => -1,\n    'status' => '{{status}}',\n    'return' => 'ids'\n]);\nreturn \$query->get_orders();",
+        'vars' => [
+            [
+                'name'    => 'status',
+                'label'   => 'Status',
+                'default' => 'wc-processing',
+                'type'    => 'select',
+                'options' => [
+                    ['value' => 'wc-pending',    'label' => 'Pending'],
+                    ['value' => 'wc-processing', 'label' => 'Processing'],
+                    ['value' => 'wc-on-hold',    'label' => 'On hold'],
+                    ['value' => 'wc-completed',  'label' => 'Completed'],
+                    ['value' => 'wc-cancelled',  'label' => 'Cancelled'],
+                    ['value' => 'wc-refunded',   'label' => 'Refunded'],
+                    ['value' => 'wc-failed',     'label' => 'Failed'],
+                    ['value' => 'any',           'label' => 'Any']
+                ]
+            ]
+        ]
+    ];
+
+    $batch_fetch_templates['WooCommerce']['wc_products_by_status'] = [
+        'label' => 'WC: products by status + type',
+        'code' => "<?php\n\$args = [\n    'limit'  => -1,\n    'return' => 'ids',\n    'status' => '{{status}}'\n];\nif ('{{type}}' !== 'any') {\n    \$args['type'] = '{{type}}';\n}\nreturn wc_get_products(\$args);",
+        'vars' => [
+            [
+                'name'    => 'status',
+                'label'   => 'Status',
+                'default' => 'publish',
+                'type'    => 'select',
+                'options' => [
+                    ['value' => 'publish', 'label' => 'Published'],
+                    ['value' => 'draft',   'label' => 'Draft'],
+                    ['value' => 'private', 'label' => 'Private'],
+                    ['value' => 'any',     'label' => 'Any']
+                ]
+            ],
+            [
+                'name'    => 'type',
+                'label'   => 'Type',
+                'default' => 'any',
+                'type'    => 'select',
+                'options' => [
+                    ['value' => 'any',      'label' => 'Any'],
+                    ['value' => 'simple',   'label' => 'Simple'],
+                    ['value' => 'variable', 'label' => 'Variable'],
+                    ['value' => 'grouped',  'label' => 'Grouped'],
+                    ['value' => 'external', 'label' => 'External']
+                ]
+            ]
+        ]
+    ];
+
+    $batch_fetch_templates['WooCommerce']['wc_customers_no_orders'] = [
+        'label' => 'WC: customers without orders',
+        'code'  => "<?php\n\$all_customers = get_users(['role' => 'customer', 'fields' => 'ID']);\nif (empty(\$all_customers)) {\n    return [];\n}\n\$result = [];\nforeach (\$all_customers as \$user_id) {\n    if (wc_get_customer_order_count((int) \$user_id) === 0) {\n        \$result[] = (int) \$user_id;\n    }\n}\nreturn \$result;"
+    ];
+}
+
+// ── Batch process: WordPress core ─────────────────────────────────────────────
+
+$batch_process_templates['WordPress core']['post_update_meta'] = [
+    'label' => 'Post: update meta',
+    'code' => "<?php\n// \$item = post ID\n\$post = get_post(\$item);\nif (!\$post) {\n    echo Ajax_Snippets_Table::render(['id' => \$item, 'error' => 'Not found'], 'Post');\n    return;\n}\nupdate_post_meta(\$post->ID, '{{meta_key}}', '{{meta_value}}');\n\$new = get_post_meta(\$post->ID, '{{meta_key}}', true);\necho Ajax_Snippets_Table::render(['id' => \$post->ID, 'title' => \$post->post_title, '{{meta_key}}' => \$new], 'Post Meta Updated');",
+    'vars' => [
+        ['name' => 'meta_key',   'label' => 'Meta key',  'default' => '', 'type' => 'text'],
+        ['name' => 'meta_value', 'label' => 'New value', 'default' => '', 'type' => 'text']
+    ]
+];
+
+$batch_process_templates['WordPress core']['post_update_status'] = [
+    'label' => 'Post: update status',
+    'code' => "<?php\n// \$item = post ID\n\$post = get_post(\$item);\nif (!\$post) {\n    echo Ajax_Snippets_Table::render(['id' => \$item, 'error' => 'Not found'], 'Post');\n    return;\n}\nwp_update_post(['ID' => \$post->ID, 'post_status' => '{{status}}']);\necho Ajax_Snippets_Table::render(['id' => \$post->ID, 'title' => \$post->post_title, 'new_status' => '{{status}}'], 'Post Status Updated');",
+    'vars' => [
+        [
+            'name'    => 'status',
+            'label'   => 'New status',
+            'default' => 'draft',
+            'type'    => 'select',
+            'options' => [
+                ['value' => 'publish', 'label' => 'Publish'],
+                ['value' => 'draft',   'label' => 'Draft'],
+                ['value' => 'private', 'label' => 'Private'],
+                ['value' => 'trash',   'label' => 'Trash'],
+                ['value' => 'pending', 'label' => 'Pending review']
+            ]
+        ]
+    ]
+];
+
+$batch_process_templates['WordPress core']['user_update_meta'] = [
+    'label' => 'User: update meta',
+    'code' => "<?php\n// \$item = user ID\n\$user = get_user_by('id', \$item);\nif (!\$user) {\n    echo Ajax_Snippets_Table::render(['id' => \$item, 'error' => 'Not found'], 'User');\n    return;\n}\nupdate_user_meta(\$user->ID, '{{meta_key}}', '{{meta_value}}');\n\$new = get_user_meta(\$user->ID, '{{meta_key}}', true);\necho Ajax_Snippets_Table::render(['id' => \$user->ID, 'login' => \$user->user_login, '{{meta_key}}' => \$new], 'User Meta Updated');",
+    'vars' => [
+        ['name' => 'meta_key',   'label' => 'Meta key',  'default' => '', 'type' => 'text'],
+        ['name' => 'meta_value', 'label' => 'New value', 'default' => '', 'type' => 'text']
+    ]
+];
+
+$batch_process_templates['WordPress core']['delete_transient_batch'] = [
+    'label' => 'Transients: delete by name',
+    'code' => "<?php\n// \$item = transient name (without _transient_ prefix)\n\$result = delete_transient(\$item);\necho Ajax_Snippets_Table::render(['transient' => \$item, 'deleted' => \$result ? 'yes' : 'no'], 'Delete Transient');"
+];
+
+// ── Batch process: WooCommerce ────────────────────────────────────────────────
+
+if ($has_wc) {
+    $batch_process_templates['WooCommerce']['wc_product_update_price'] = [
+        'label' => 'Product: update regular price',
+        'code' => "<?php\n// \$item = product ID\n\$product = wc_get_product(\$item);\nif (!\$product) {\n    echo Ajax_Snippets_Table::render(['id' => \$item, 'error' => 'Not found'], 'Product');\n    return;\n}\n\$old = \$product->get_regular_price();\n\$product->set_regular_price('{{price}}');\n\$product->save();\necho Ajax_Snippets_Table::render(['id' => \$product->get_id(), 'name' => \$product->get_name(), 'old_price' => \$old, 'new_price' => \$product->get_regular_price()], 'Price Updated');",
+        'vars' => [
+            ['name' => 'price', 'label' => 'New price', 'default' => '', 'type' => 'text']
+        ]
+    ];
+
+    $batch_process_templates['WooCommerce']['wc_product_update_stock'] = [
+        'label' => 'Product: update stock quantity',
+        'code' => "<?php\n// \$item = product ID\n\$product = wc_get_product(\$item);\nif (!\$product) {\n    echo Ajax_Snippets_Table::render(['id' => \$item, 'error' => 'Not found'], 'Product');\n    return;\n}\n\$old = \$product->get_stock_quantity();\n\$product->set_manage_stock(true);\n\$product->set_stock_quantity((int) '{{quantity}}');\n\$product->save();\necho Ajax_Snippets_Table::render(['id' => \$product->get_id(), 'name' => \$product->get_name(), 'old_qty' => \$old, 'new_qty' => \$product->get_stock_quantity()], 'Stock Updated');",
+        'vars' => [
+            ['name' => 'quantity', 'label' => 'New quantity', 'default' => '0', 'type' => 'number']
+        ]
+    ];
+
+    $batch_process_templates['WooCommerce']['wc_order_update_status'] = [
+        'label' => 'Order: update status',
+        'code' => "<?php\n// \$item = order ID\n\$order = wc_get_order(\$item);\nif (!\$order) {\n    echo Ajax_Snippets_Table::render(['id' => \$item, 'error' => 'Not found'], 'Order');\n    return;\n}\n\$old = \$order->get_status();\n\$order->update_status('{{status}}', '{{note}}');\necho Ajax_Snippets_Table::render(['id' => \$order->get_id(), 'old_status' => \$old, 'new_status' => \$order->get_status()], 'Order Status Updated');",
+        'vars' => [
+            [
+                'name'    => 'status',
+                'label'   => 'New status',
+                'default' => 'processing',
+                'type'    => 'select',
+                'options' => [
+                    ['value' => 'pending',    'label' => 'Pending'],
+                    ['value' => 'processing', 'label' => 'Processing'],
+                    ['value' => 'on-hold',    'label' => 'On hold'],
+                    ['value' => 'completed',  'label' => 'Completed'],
+                    ['value' => 'cancelled',  'label' => 'Cancelled'],
+                    ['value' => 'refunded',   'label' => 'Refunded'],
+                    ['value' => 'failed',     'label' => 'Failed']
+                ]
+            ],
+            ['name' => 'note', 'label' => 'Note (optional)', 'default' => '', 'type' => 'text', 'required' => false]
+        ]
+    ];
+
+    $batch_process_templates['WooCommerce']['wc_delete_customer_account'] = [
+        'label' => 'WC: delete customer account',
+        'code'  => "<?php\n// \$item = user ID\nif (!function_exists('wp_delete_user')) {\n    require_once ABSPATH . 'wp-admin/includes/user.php';\n}\n\$user = get_user_by('id', (int) \$item);\nif (!\$user) {\n    echo Ajax_Snippets_Table::render(['id' => \$item, 'error' => 'User not found'], 'Delete Account');\n    return;\n}\n\$login   = \$user->user_login;\n\$email   = \$user->user_email;\n\$deleted = wp_delete_user((int) \$item);\necho Ajax_Snippets_Table::render([\n    'id'      => \$item,\n    'login'   => \$login,\n    'email'   => \$email,\n    'deleted' => \$deleted ? 'yes' : 'no'\n], 'Account Deleted');"
+    ];
+}
+
 if ($has_wcs) {
     $snippet_templates['Woo Subscriptions']['wcs_get_subscription'] = [
         'label' => 'WCS: get subscription',
@@ -908,3 +1110,65 @@ if ($has_jetpack) {
         'code' => "<?php\n\$value = get_option('jetpack_options');\necho Ajax_Snippets_Table::render(['jetpack_options' => \$value], 'Jetpack');"
     ];
 }
+
+// ── Single-page: Performance ──────────────────────────────────────────────────
+
+$snippet_templates['Performance']['perf_autoloaded_options'] = [
+    'label' => 'Perf: autoloaded options size',
+    'code'  => "<?php\nglobal \$wpdb;\n\$autoload_values = wp_autoload_values_to_autoload();\n\$placeholders = implode(', ', array_fill(0, count(\$autoload_values), '%s'));\n\$rows = \$wpdb->get_results(\n    \$wpdb->prepare(\n        \"SELECT option_name, LENGTH(option_value) AS size_bytes, LEFT(option_value, 100) AS preview\n         FROM {\$wpdb->options}\n         WHERE autoload IN (\$placeholders)\n         ORDER BY size_bytes DESC\n         LIMIT 50\",\n        \$autoload_values\n    ),\n    ARRAY_A\n);\n\$total = (int) \$wpdb->get_var(\$wpdb->prepare(\"SELECT SUM(LENGTH(option_value)) FROM {\$wpdb->options} WHERE autoload IN (\$placeholders)\", \$autoload_values));\n\$count = (int) \$wpdb->get_var(\$wpdb->prepare(\"SELECT COUNT(*) FROM {\$wpdb->options} WHERE autoload IN (\$placeholders)\", \$autoload_values));\necho Ajax_Snippets_Table::render([\n    'total_autoloaded' => \$count,\n    'total_size_bytes' => \$total,\n    'total_size_kb'    => round(\$total / 1024, 2),\n    'top_50'           => \$rows\n], 'Autoloaded Options');"
+];
+
+$snippet_templates['Performance']['perf_db_queries'] = [
+    'label' => 'Perf: DB query stats (SAVEQUERIES)',
+    'code'  => "<?php\nglobal \$wpdb;\n\$info = [\n    'queries_this_request' => \$wpdb->num_queries,\n    'savequeries_enabled'  => defined('SAVEQUERIES') && SAVEQUERIES ? 'yes' : 'no',\n];\nif (defined('SAVEQUERIES') && SAVEQUERIES && !empty(\$wpdb->queries)) {\n    \$times = array_column(\$wpdb->queries, 1);\n    \$info['query_time_total_ms'] = round(array_sum(\$times) * 1000, 2);\n    \$info['query_time_avg_ms']   = round((array_sum(\$times) / count(\$times)) * 1000, 2);\n    arsort(\$times);\n    \$slow = [];\n    \$i = 0;\n    foreach (\$times as \$idx => \$t) {\n        if (++\$i > 10) {\n            break;\n        }\n        \$slow[] = [\n            'time_ms' => round(\$t * 1000, 3),\n            'sql'     => isset(\$wpdb->queries[\$idx][0]) ? substr(\$wpdb->queries[\$idx][0], 0, 300) : ''\n        ];\n    }\n    echo Ajax_Snippets_Table::render(\$info, 'DB Query Stats');\n    echo Ajax_Snippets_Table::render(\$slow, 'Top 10 Slowest Queries');\n} else {\n    \$info['note'] = 'Enable SAVEQUERIES in wp-config.php to see per-query stats';\n    echo Ajax_Snippets_Table::render(\$info, 'DB Query Stats');\n}"
+];
+
+$snippet_templates['Performance']['perf_cron_events'] = [
+    'label' => 'Perf: WP-Cron scheduled events',
+    'code'  => "<?php\n\$crons = _get_cron_array();\n\$items = [];\nif (is_array(\$crons)) {\n    foreach (\$crons as \$timestamp => \$hooks) {\n        foreach (\$hooks as \$hook => \$events) {\n            foreach (\$events as \$key => \$event) {\n                \$items[] = [\n                    'hook'      => \$hook,\n                    'next_run'  => date('Y-m-d H:i:s', \$timestamp),\n                    'overdue_s' => max(0, time() - \$timestamp),\n                    'schedule'  => isset(\$event['schedule']) ? \$event['schedule'] : 'one-time',\n                    'interval'  => isset(\$event['interval']) ? \$event['interval'] : ''\n                ];\n            }\n        }\n    }\n}\nusort(\$items, function (\$a, \$b) { return strcmp(\$a['next_run'], \$b['next_run']); });\n\$overdue = count(array_filter(\$items, function (\$r) { return \$r['overdue_s'] > 0; }));\necho Ajax_Snippets_Table::render([\n    'total_events' => count(\$items),\n    'overdue'      => \$overdue,\n    'events'       => \$items\n], 'WP-Cron Events');"
+];
+
+$snippet_templates['Performance']['perf_object_cache_stats'] = [
+    'label' => 'Perf: object cache stats',
+    'code'  => "<?php\n\$cache_obj = isset(\$GLOBALS['wp_object_cache']) ? \$GLOBALS['wp_object_cache'] : null;\n\$info = [\n    'cache_type' => \$cache_obj ? get_class(\$cache_obj) : 'unknown',\n    'persistent' => wp_using_ext_object_cache() ? 'yes' : 'no (built-in)',\n];\nif (wp_using_ext_object_cache() && \$cache_obj) {\n    \$found = false;\n    foreach (['get_stats', 'getStats', 'stats', 'info'] as \$method) {\n        if (method_exists(\$cache_obj, \$method)) {\n            \$result = \$cache_obj->\$method();\n            if (\$result) {\n                \$info['stats'] = \$result;\n                \$found = true;\n            }\n            break;\n        }\n    }\n    if (!\$found) {\n        \$info['note'] = 'Cache object exposes no known stats method';\n    }\n} else {\n    if (is_object(\$cache_obj)) {\n        if (property_exists(\$cache_obj, 'cache')) {\n            \$info['groups_count'] = count((array) \$cache_obj->cache);\n            \$info['groups'] = implode(', ', array_slice(array_keys((array) \$cache_obj->cache), 0, 30));\n        }\n        \$info['hits']   = property_exists(\$cache_obj, 'cache_hits')   ? \$cache_obj->cache_hits   : 'n/a';\n        \$info['misses'] = property_exists(\$cache_obj, 'cache_misses') ? \$cache_obj->cache_misses : 'n/a';\n    }\n}\necho Ajax_Snippets_Table::render(\$info, 'Object Cache');"
+];
+
+$snippet_templates['Performance']['perf_post_revisions'] = [
+    'label' => 'Perf: post revisions count + size',
+    'code'  => "<?php\nglobal \$wpdb;\n\$rows = \$wpdb->get_results(\n    \"SELECT p.post_type, COUNT(*) AS revision_count,\n            ROUND(SUM(LENGTH(r.post_content)) / 1024, 2) AS total_size_kb\n     FROM {\$wpdb->posts} r\n     INNER JOIN {\$wpdb->posts} p ON p.ID = r.post_parent\n     WHERE r.post_type = 'revision'\n     GROUP BY p.post_type\n     ORDER BY revision_count DESC\",\n    ARRAY_A\n);\n\$total = \$wpdb->get_row(\n    \"SELECT COUNT(*) AS count, ROUND(SUM(LENGTH(post_content)) / 1024, 2) AS size_kb\n     FROM {\$wpdb->posts} WHERE post_type = 'revision'\",\n    ARRAY_A\n);\necho Ajax_Snippets_Table::render([\n    'total_revisions' => (int) \$total['count'],\n    'total_size_kb'   => (float) \$total['size_kb'],\n    'by_post_type'    => \$rows\n], 'Post Revisions');"
+];
+
+$snippet_templates['Performance']['perf_image_sizes'] = [
+    'label' => 'Perf: registered image sizes',
+    'code'  => "<?php\nglobal \$_wp_additional_image_sizes;\n\$built_in = [\n    'thumbnail'    => ['width' => (int) get_option('thumbnail_size_w'), 'height' => (int) get_option('thumbnail_size_h'), 'crop' => (bool) get_option('thumbnail_crop')],\n    'medium'       => ['width' => (int) get_option('medium_size_w'),    'height' => (int) get_option('medium_size_h'),    'crop' => false],\n    'medium_large' => ['width' => 768, 'height' => 0, 'crop' => false],\n    'large'        => ['width' => (int) get_option('large_size_w'),     'height' => (int) get_option('large_size_h'),     'crop' => false],\n];\n\$all = array_merge(\$built_in, (array) \$_wp_additional_image_sizes);\n\$items = [];\nforeach (\$all as \$name => \$size) {\n    \$items[] = [\n        'name'   => \$name,\n        'width'  => \$size['width']  ?: 'unlimited',\n        'height' => \$size['height'] ?: 'unlimited',\n        'crop'   => !empty(\$size['crop']) ? 'yes' : 'no'\n    ];\n}\necho Ajax_Snippets_Table::render(\$items, 'Registered Image Sizes');"
+];
+
+// ── Batch fetch: Performance ──────────────────────────────────────────────────
+
+$batch_fetch_templates['Performance']['posts_with_many_revisions'] = [
+    'label' => 'Perf: posts with many revisions',
+    'code'  => "<?php\nglobal \$wpdb;\n\$min = max(1, (int) '{{min_revisions}}');\nreturn \$wpdb->get_col(\n    \$wpdb->prepare(\n        \"SELECT post_parent\n         FROM {\$wpdb->posts}\n         WHERE post_type = 'revision'\n         GROUP BY post_parent\n         HAVING COUNT(*) >= %d\",\n        \$min\n    )\n);",
+    'vars'  => [
+        ['name' => 'min_revisions', 'label' => 'Min revisions', 'default' => '10', 'type' => 'number']
+    ]
+];
+
+$batch_fetch_templates['Performance']['large_autoload_options'] = [
+    'label' => 'Perf: large autoloaded options',
+    'code'  => "<?php\nglobal \$wpdb;\n\$min_kb = max(1, (int) '{{min_kb}}');\n\$autoload_values = wp_autoload_values_to_autoload();\n\$placeholders = implode(', ', array_fill(0, count(\$autoload_values), '%s'));\n\$params = array_merge(\$autoload_values, [\$min_kb * 1024]);\nreturn \$wpdb->get_col(\n    \$wpdb->prepare(\n        \"SELECT option_name FROM {\$wpdb->options}\n         WHERE autoload IN (\$placeholders) AND LENGTH(option_value) >= %d\n         ORDER BY LENGTH(option_value) DESC\",\n        \$params\n    )\n);",
+    'vars'  => [
+        ['name' => 'min_kb', 'label' => 'Min size (KB)', 'default' => '10', 'type' => 'number']
+    ]
+];
+
+// ── Batch process: Performance ────────────────────────────────────────────────
+
+$batch_process_templates['Performance']['delete_post_revisions'] = [
+    'label' => 'Perf: delete post revisions',
+    'code'  => "<?php\n// \$item = post ID\n\$revisions = wp_get_post_revisions((int) \$item);\n\$deleted = 0;\nforeach (\$revisions as \$revision) {\n    if (wp_delete_post_revision(\$revision->ID)) {\n        \$deleted++;\n    }\n}\n\$post = get_post((int) \$item);\necho Ajax_Snippets_Table::render([\n    'post_id' => \$item,\n    'title'   => \$post ? \$post->post_title : '(not found)',\n    'deleted' => \$deleted\n], 'Revisions Deleted');"
+];
+
+$batch_process_templates['Performance']['disable_autoload_option'] = [
+    'label' => 'Perf: disable option autoload',
+    'code'  => "<?php\n// \$item = option_name\nglobal \$wpdb;\n\$before = \$wpdb->get_var(\n    \$wpdb->prepare(\"SELECT autoload FROM {\$wpdb->options} WHERE option_name = %s\", \$item)\n);\n\$wpdb->update(\$wpdb->options, ['autoload' => 'no'], ['option_name' => \$item]);\n\$after = \$wpdb->get_var(\n    \$wpdb->prepare(\"SELECT autoload FROM {\$wpdb->options} WHERE option_name = %s\", \$item)\n);\necho Ajax_Snippets_Table::render([\n    'option_name'  => \$item,\n    'autoload_was' => \$before,\n    'autoload_now' => \$after\n], 'Autoload Disabled');"
+];

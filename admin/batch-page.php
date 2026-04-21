@@ -11,6 +11,10 @@
             <button id="batch_resume" class="button button-secondary" type="button" style="display:none"><?php echo esc_html__('Resume', 'ajax-snippets'); ?></button>
             <label for="batch_size"><?php echo esc_html__('Items / AJAX', 'ajax-snippets'); ?></label>
             <input id="batch_size" type="number" min="1" value="10" style="width:80px">
+            <label class="output-format-label">
+                <input type="checkbox" id="batch_output_format_pre" checked>
+                <code>&lt;pre&gt;</code>
+            </label>
             <span class="status"><?php echo esc_html__('Status: Waiting', 'ajax-snippets'); ?></span>
         </div>
         <?php
@@ -71,11 +75,11 @@
         <div class="snippet_batch_outputs">
             <details open>
                 <summary><?php echo esc_html__('Output: fetch', 'ajax-snippets'); ?></summary>
-                <div id="batch_fetch_output"></div>
+                <pre id="batch_fetch_output"></pre>
             </details>
             <details open>
                 <summary><?php echo esc_html__('Output: batch', 'ajax-snippets'); ?></summary>
-                <div id="batch_process_output"></div>
+                <pre id="batch_process_output"></pre>
             </details>
         </div>
     </div>

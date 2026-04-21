@@ -58,6 +58,13 @@ jobs:
         if: steps.tag.outputs.exists != 'true'
         run: test -f vendor/yahnis-elsts/plugin-update-checker/load-v5p6.php
 
+      - name: Download Select2
+        if: steps.tag.outputs.exists != 'true'
+        run: |
+          SELECT2_VERSION="4.1.0-rc.0"
+          curl -fsSL "https://cdn.jsdelivr.net/npm/select2@${SELECT2_VERSION}/dist/js/select2.min.js" -o assets/js/select2.min.js
+          curl -fsSL "https://cdn.jsdelivr.net/npm/select2@${SELECT2_VERSION}/dist/css/select2.min.css" -o assets/css/select2.min.css
+
       - name: Build zip
         if: steps.tag.outputs.exists != 'true'
         run: |

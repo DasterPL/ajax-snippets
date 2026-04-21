@@ -4,3 +4,7 @@
 *.log
 *.zip
 composer.phar
+/assets/js/select2.min.js
+/assets/css/select2.min.css
+.claude
+.codex

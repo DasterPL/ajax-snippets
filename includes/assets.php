@@ -21,15 +21,15 @@ add_action('admin_enqueue_scripts', function ($hook) {
     wp_enqueue_script('ajax-snippets-codemirror-lint', $codemirror_base . '/addon/lint/lint.js', ['wp-codemirror'], AJAX_SNIPPETS_VERSION, true);
     wp_enqueue_script('ajax-snippets-php-intelisense', AJAX_SNIPPETS_URL . 'assets/js/php_intelisense.js', ['ajax-snippets-codemirror-hint', 'ajax-snippets-codemirror-lint'], AJAX_SNIPPETS_VERSION, true);
     if (!wp_style_is('select2', 'registered')) {
-        wp_register_style('select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css', [], '4.1.0-rc.0');
+        wp_register_style('select2', AJAX_SNIPPETS_URL . 'assets/css/select2.min.css', [], '4.1.0-rc.0');
     }
     if (!wp_script_is('select2', 'registered')) {
-        wp_register_script('select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js', ['jquery'], '4.1.0-rc.0', true);
+        wp_register_script('select2', AJAX_SNIPPETS_URL . 'assets/js/select2.min.js', ['jquery'], '4.1.0-rc.0', true);
     }
     wp_enqueue_style('select2');
     wp_enqueue_script('select2');
     wp_enqueue_style('ajax-snippets', AJAX_SNIPPETS_URL . 'assets/css/style.css', ['select2'], AJAX_SNIPPETS_VERSION);
-    wp_enqueue_script('ajax-snippets', AJAX_SNIPPETS_URL . 'assets/js/script.js', ['jquery', 'select2', 'ajax-snippets-php-intelisense'], AJAX_SNIPPETS_VERSION, true);
+    wp_enqueue_script('ajax-snippets', AJAX_SNIPPETS_URL . 'assets/js/script.js', ['jquery', 'select2', 'ajax-snippets-php-intelisense', 'code-editor'], AJAX_SNIPPETS_VERSION, true);
 
     wp_localize_script(
         'ajax-snippets',

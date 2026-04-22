@@ -713,6 +713,28 @@ jQuery(document).ready(function ($) {
     //     }
     // });
 
+    const copyToClipboard = (text, $btn) => {
+        const original = $btn.text();
+        const done = () => {
+            $btn.text(i18n.copied || 'Copied!');
+            setTimeout(() => $btn.text(original), 1500);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done);
+        } else {
+            const $tmp = $('<textarea />').val(text).appendTo('body').select();
+            document.execCommand('copy');
+            $tmp.remove();
+            done();
+        }
+    };
+    $('#copy_output').on('click', function () {
+        copyToClipboard($('#output').text(), $(this));
+    });
+    $(document).on('click', '.copy-output-btn', function () {
+        copyToClipboard($('#' + $(this).data('target')).text(), $(this));
+    });
+
     $(window).on('beforeunload', function () {
         if (ajaxInProgress) {
             return 'An AJAX request is in progress. Are you sure you want to leave?';

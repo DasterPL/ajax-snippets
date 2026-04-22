@@ -35,6 +35,9 @@
         <textarea id="snippet_content" name="snippet_content"><?php echo esc_textarea("<?php"); ?></textarea>
     </form>
     <hr>
+    <div class="output-toolbar">
+        <button type="button" id="copy_output" class="button button-small"><?php echo esc_html__('Copy', 'ajax-snippets'); ?></button>
+    </div>
     <pre id="output"></pre>
     <div class="snippet_footer"><?php echo esc_html(sprintf(__('Ajax-Snippets Version: %s', 'ajax-snippets'), AJAX_SNIPPETS_VERSION)); ?></div>
 </div>

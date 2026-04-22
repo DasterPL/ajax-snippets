@@ -51,6 +51,8 @@ add_action('admin_enqueue_scripts', function ($hook) {
                 'snippetPlaceholder' => __('Choose snippet', 'ajax-snippets'),
                 'resumeMissing' => __('No batch data to resume.', 'ajax-snippets'),
                 'unknownError' => __('Unknown error', 'ajax-snippets'),
+                'copy' => __('Copy', 'ajax-snippets'),
+                'copied' => __('Copied!', 'ajax-snippets'),
                 'statusFetching' => __('Fetching', 'ajax-snippets'),
                 'statusFetched' => __('Fetched', 'ajax-snippets'),
                 'statusProcessing' => __('Processing', 'ajax-snippets'),

@@ -75,10 +75,16 @@
         <div class="snippet_batch_outputs">
             <details open>
                 <summary><?php echo esc_html__('Output: fetch', 'ajax-snippets'); ?></summary>
+                <div class="output-toolbar">
+                    <button type="button" class="button button-small copy-output-btn" data-target="batch_fetch_output"><?php echo esc_html__('Copy', 'ajax-snippets'); ?></button>
+                </div>
                 <pre id="batch_fetch_output"></pre>
             </details>
             <details open>
                 <summary><?php echo esc_html__('Output: batch', 'ajax-snippets'); ?></summary>
+                <div class="output-toolbar">
+                    <button type="button" class="button button-small copy-output-btn" data-target="batch_process_output"><?php echo esc_html__('Copy', 'ajax-snippets'); ?></button>
+                </div>
                 <pre id="batch_process_output"></pre>
             </details>
         </div>

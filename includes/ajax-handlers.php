@@ -2,6 +2,54 @@
 
 defined('ABSPATH') || exit;
 
+if (!function_exists('ajax_snippets_guarded_eval')) {
+    function ajax_snippets_guarded_eval($code, array $vars = [])
+    {
+        extract($vars, EXTR_SKIP);
+        $guard_level = ob_get_level();
+        $succeeded = false;
+
+        ob_start(function ($buffer) use (&$succeeded) {
+            if ($succeeded) {
+                return $buffer;
+            }
+            if (!headers_sent()) {
+                header_remove();
+                header('Content-Type: application/json; charset=utf-8');
+                http_response_code(500);
+            }
+            return wp_json_encode([
+                'success' => false,
+                'data' => [
+                    'code' => 500,
+                    'type' => 'early_exit',
+                    'message' => 'Snippet terminated the request early (exit, die, or wp_send_json called).',
+                ]
+            ]);
+        });
+
+        ob_start();
+        try {
+            $return = eval("?>" . $code);
+            $output = ob_get_level() > $guard_level + 1 ? ob_get_clean() : '';
+            $succeeded = true;
+            if (ob_get_level() > $guard_level) {
+                ob_end_clean();
+            }
+            return ['output' => $output, 'return' => $return];
+        } catch (\Throwable $th) {
+            while (ob_get_level() > $guard_level + 1) {
+                ob_end_clean();
+            }
+            $succeeded = true;
+            if (ob_get_level() > $guard_level) {
+                ob_end_clean();
+            }
+            throw $th;
+        }
+    }
+}
+
 if (!function_exists('ajax_snippets_classify_throwable')) {
     function ajax_snippets_classify_throwable(\Throwable $throwable)
     {
@@ -43,17 +91,12 @@ add_action('wp_ajax_ajax_snippet_submit', function () {
         require_once AJAX_SNIPPETS_DIR . 'includes/csv-helper.php';
         $snippet_content = wp_unslash($_POST['snippet_content']);
         try {
-            ob_start();
-            $return = eval ("?>" . $snippet_content);
-            $output = ob_get_clean();
+            $result = ajax_snippets_guarded_eval($snippet_content);
             wp_send_json_success([
-                'message' => $output,
-                'return' => $return
+                'message' => $result['output'],
+                'return' => $result['return']
             ], 200);
         } catch (\Throwable $th) {
-            if (ob_get_level() > 0) {
-                ob_end_clean();
-            }
             $error = ajax_snippets_classify_throwable($th);
             wp_send_json_error([
                 'code' => $error['status'],
@@ -90,9 +133,8 @@ add_action('wp_ajax_ajax_snippet_batch_init', function () {
     $fetch_code = wp_unslash($_POST['fetch_code']);
 
     try {
-        ob_start();
-        $data = eval ("?>" . $fetch_code);
-        $output = ob_get_clean();
+        $result = ajax_snippets_guarded_eval($fetch_code);
+        $data = $result['return'];
         if (!is_array($data)) {
             wp_send_json_error([
                 'message' => 'Fetch code must return an array.'
@@ -102,13 +144,10 @@ add_action('wp_ajax_ajax_snippet_batch_init', function () {
         set_transient('ajax-snippet-batch-index_' . get_current_user_id(), 0, DAY_IN_SECONDS);
         delete_transient('ajax-snippet-batch-prev_' . get_current_user_id());
         wp_send_json_success([
-            'message' => $output,
+            'message' => $result['output'],
             'count' => count($data)
         ], 200);
     } catch (\Throwable $th) {
-        if (ob_get_level() > 0) {
-            ob_end_clean();
-        }
         $error = ajax_snippets_classify_throwable($th);
         wp_send_json_error([
             'code' => $error['status'],
@@ -173,10 +212,10 @@ add_action('wp_ajax_ajax_snippet_batch_next', function () {
         for ($i = $start_index; $i < $end_index; $i++) {
             $index = $i;
             $item = $data[$i];
-            ob_start();
             // $prev contains the previous iteration's return value.
-            $return = eval ("?>" . $process_code);
-            $messages .= ob_get_clean();
+            $result = ajax_snippets_guarded_eval($process_code, compact('item', 'index', 'total', 'data', 'prev'));
+            $messages .= $result['output'];
+            $return = $result['return'];
             $prev = $return;
         }
         $next_index = $end_index;
@@ -190,9 +229,6 @@ add_action('wp_ajax_ajax_snippet_batch_next', function () {
             'total' => $total
         ], 200);
     } catch (\Throwable $th) {
-        if (ob_get_level() > 0) {
-            ob_end_clean();
-        }
         $error = ajax_snippets_classify_throwable($th);
         wp_send_json_error([
             'code' => $error['status'],

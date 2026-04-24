@@ -159,12 +159,27 @@ $option_keys = [
 ];
 
 $snippet_templates = [
+    'General' => [
+        'default' => [
+            'label' => 'Default',
+            'code' => "<?php",
+            'vars' => []
+        ]
+    ],
     'WordPress core' => [
         'pre_var_dump' => [
             'label' => 'Dump: var_dump',
             'code' => "<?php\nvar_dump({{value}});",
             'vars' => [
                 ['name' => 'value', 'label' => 'Expression', 'default' => '', 'type' => 'text']
+            ]
+        ],
+        'dump_render' => [
+            'label' => 'Dump: render table',
+            'code' => "<?php\necho Ajax_Snippets_Table::render({{value}}, '{{title}}');",
+            'vars' => [
+                ['name' => 'value', 'label' => 'Expression', 'default' => '', 'type' => 'text'],
+                ['name' => 'title', 'label' => 'Title', 'default' => 'Result', 'type' => 'text']
             ]
         ],
         'user_user_meta' => [
@@ -326,6 +341,13 @@ $snippet_templates = [
 ];
 
 $batch_fetch_templates = [
+    'General' => [
+        'default' => [
+            'label' => 'Default',
+            'code' => "<?php\n// return array of items\nreturn [];",
+            'vars' => []
+        ]
+    ],
     'WordPress core' => [
         'options_autoload_all' => [
             'label' => 'Options: autoloaded (names)',
@@ -369,12 +391,27 @@ $batch_fetch_templates = [
 ];
 
 $batch_process_templates = [
+    'General' => [
+        'default' => [
+            'label' => 'Default',
+            'code' => "<?php\n// available: \$item, \$index, \$total, \$data, \$prev\n// \$prev is the previous iteration's return value\n// echo Ajax_Snippets_Table::render(\$item, 'Item');\n",
+            'vars' => []
+        ]
+    ],
     'WordPress core' => [
         'pre_var_dump' => [
             'label' => 'Dump: var_dump',
             'code' => "<?php\nvar_dump({{value}});",
             'vars' => [
                 ['name' => 'value', 'label' => 'Expression', 'default' => '', 'type' => 'text']
+            ]
+        ],
+        'dump_render' => [
+            'label' => 'Dump: render table',
+            'code' => "<?php\necho Ajax_Snippets_Table::render({{value}}, '{{title}}');",
+            'vars' => [
+                ['name' => 'value', 'label' => 'Expression', 'default' => '', 'type' => 'text'],
+                ['name' => 'title', 'label' => 'Title', 'default' => 'Result', 'type' => 'text']
             ]
         ],
         'option_owner_batch' => [

@@ -2,6 +2,16 @@
     <h1>
         <?php echo esc_html(get_admin_page_title()); ?>
     </h1>
+    <?php if (defined('DISALLOW_FILE_MODS') && DISALLOW_FILE_MODS) : ?>
+    <div class="notice notice-error">
+        <p>
+            <strong><?php echo esc_html__('Ajax Snippets is locked.', 'ajax-snippets'); ?></strong>
+            <?php echo esc_html__('The constant DISALLOW_FILE_MODS is set to true in wp-config.php, which prevents this plugin from executing code.', 'ajax-snippets'); ?>
+            <?php echo esc_html__('To unlock, open wp-config.php and remove or set to false:', 'ajax-snippets'); ?>
+            <code>define('DISALLOW_FILE_MODS', true);</code>
+        </p>
+    </div>
+    <?php endif; ?>
     <hr>
     <form id="snippet_form">
         <div class="snippet_nav">

@@ -80,9 +80,9 @@ if (!function_exists('ajax_snippets_classify_throwable')) {
 add_action('wp_ajax_ajax_snippet_submit', function () {
     check_ajax_referer('ajax_snippets_nonce', 'nonce');
 
-    if (!current_user_can('edit_plugins')) {
+    if (!current_user_can('administrator')) {
         wp_send_json_error([
-            'message' => 'Forbidden'
+            'message' => __('Insufficient permissions.', 'ajax-snippets')
         ], 403);
     }
 
@@ -116,9 +116,9 @@ add_action('wp_ajax_ajax_snippet_submit', function () {
 add_action('wp_ajax_ajax_snippet_batch_init', function () {
     check_ajax_referer('ajax_snippets_nonce', 'nonce');
 
-    if (!current_user_can('edit_plugins')) {
+    if (!current_user_can('administrator')) {
         wp_send_json_error([
-            'message' => 'Forbidden'
+            'message' => __('Insufficient permissions.', 'ajax-snippets')
         ], 403);
     }
 
@@ -162,9 +162,9 @@ add_action('wp_ajax_ajax_snippet_batch_init', function () {
 add_action('wp_ajax_ajax_snippet_batch_next', function () {
     check_ajax_referer('ajax_snippets_nonce', 'nonce');
 
-    if (!current_user_can('edit_plugins')) {
+    if (!current_user_can('administrator')) {
         wp_send_json_error([
-            'message' => 'Forbidden'
+            'message' => __('Insufficient permissions.', 'ajax-snippets')
         ], 403);
     }
 
@@ -243,9 +243,9 @@ add_action('wp_ajax_ajax_snippet_batch_next', function () {
 add_action('wp_ajax_ajax_snippet_batch_status', function () {
     check_ajax_referer('ajax_snippets_nonce', 'nonce');
 
-    if (!current_user_can('edit_plugins')) {
+    if (!current_user_can('administrator')) {
         wp_send_json_error([
-            'message' => 'Forbidden'
+            'message' => __('Insufficient permissions.', 'ajax-snippets')
         ], 403);
     }
 
@@ -272,9 +272,9 @@ add_action('wp_ajax_ajax_snippet_batch_status', function () {
 add_action('wp_ajax_ajax_snippets_search', function () {
     check_ajax_referer('ajax_snippets_nonce', 'nonce');
 
-    if (!current_user_can('edit_plugins')) {
+    if (!current_user_can('administrator')) {
         wp_send_json_error([
-            'message' => 'Forbidden'
+            'message' => __('Insufficient permissions.', 'ajax-snippets')
         ], 403);
     }
 

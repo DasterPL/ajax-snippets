@@ -133,6 +133,9 @@ msgstr "Błąd"
 msgid "Paused"
 msgstr "Wstrzymano"
 
+msgid "Insufficient permissions."
+msgstr "Niewystarczające uprawnienia."
+
 msgid "Copy"
 msgstr "Kopiuj"
 
@@ -141,12 +144,3 @@ msgstr "Skopiowano!"
 
 msgid "previous iteration return value"
 msgstr "wartość zwrócona przez poprzednią iterację"
-
-msgid "Ajax Snippets is locked."
-msgstr "Ajax Snippets jest zablokowany."
-
-msgid "The constant DISALLOW_FILE_MODS is set to true in wp-config.php, which prevents this plugin from executing code."
-msgstr "Stała DISALLOW_FILE_MODS jest ustawiona na true w wp-config.php, co uniemożliwia wtyczce wykonywanie kodu."
-
-msgid "To unlock, open wp-config.php and remove or set to false:"
-msgstr "Aby odblokować, otwórz wp-config.php i usuń lub zmień na false:"

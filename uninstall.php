@@ -1,22 +1,20 @@
 <?php
 
 /**
- * Fired when the user deletes the plugin (Plugins → Delete). Removes all
- * traces of the MCP integration:
+ * Fired when the user deletes the plugin (Plugins → Delete). Wipes every
+ * trace of the plugin's state from the database:
  *
- *   1. Best-effort: tells the registry to soft-disable this site so it stops
- *      showing up in the bridge's list_sites. Audit history on the registry
- *      side is kept; the site row stays with status='disabled'.
- *   2. Drops the two MCP-specific tables (wp_ajax_snippets_audit and
- *      wp_ajax_snippets_mcp_nonces).
- *   3. Deletes every ajax_snippets_mcp_* option.
- *   4. Clears any scheduled cron hooks owned by the integration.
+ *   1. MCP: best-effort POST /v1/sites/deregister so the registry soft-disables
+ *      this site immediately instead of waiting for last_seen staleness.
+ *   2. MCP: drops the two MCP tables (wp_ajax_snippets_audit, wp_ajax_snippets_mcp_nonces).
+ *   3. MCP: deletes every ajax_snippets_mcp_* option (explicit list).
+ *   4. MCP: clears scheduled cron hooks (heartbeat + async key refresh).
+ *   5. Core: clears the batch-runner transients used by both the admin UI and
+ *      the MCP REST endpoint (`ajax-snippet-batch-{data,index,prev}_<uid>`).
+ *      These are per-user, so we DELETE them in bulk via the options table.
  *
  * Deactivation alone (Plugins → Deactivate) does NOT trigger this script —
  * deactivate is reversible by design, only uninstall does a full wipe.
- *
- * The pre-MCP parts of the plugin (snippet history, user preferences) don't
- * have any state in the database, so there's nothing else to clean.
  */
 
 defined('WP_UNINSTALL_PLUGIN') || exit;
@@ -68,3 +66,17 @@ foreach ($options_to_delete as $opt) {
 // 4. Clear scheduled hooks.
 wp_clear_scheduled_hook(AJAX_SNIPPETS_MCP_CRON_HEARTBEAT);
 wp_clear_scheduled_hook('ajax_snippets_mcp_refresh_keys_now');
+
+// 5. Wipe batch-runner transients from both code paths (admin AJAX + MCP REST).
+//    Transients are stored as `_transient_<key>` and `_transient_timeout_<key>`
+//    rows in wp_options. The keys include the user id suffix, so we wildcard.
+$wpdb->query(
+    "DELETE FROM {$wpdb->options}
+     WHERE option_name LIKE '\\_transient\\_ajax-snippet-batch-%'
+        OR option_name LIKE '\\_transient\\_timeout\\_ajax-snippet-batch-%'"
+);
+
+// In a multisite install the same plugin can be deactivated network-wide; the
+// per-site wp_options table is what holds the transients here so the single
+// DELETE above covers the current site. WP itself iterates uninstall.php per
+// site when running a network uninstall.

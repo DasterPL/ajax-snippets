@@ -16,6 +16,21 @@ defined('ABSPATH') || exit;
  * The secret key is never autoloaded and never exposed via REST or admin UI.
  */
 
+/**
+ * Best-effort zeroing of sensitive material. Some hosts ship without the
+ * sodium extension (only sodium_compat in userland), where sodium_memzero
+ * either is missing or throws SodiumException because it cannot wipe a
+ * PHP string in place. Fall back to overwriting + nulling.
+ */
+function ajax_snippets_mcp_memzero(&$var)
+{
+    if (extension_loaded('sodium') && function_exists('sodium_memzero')) {
+        try { sodium_memzero($var); return; } catch (\Throwable $e) {}
+    }
+    if (is_string($var)) { $var = str_repeat("\0", strlen($var)); }
+    $var = null;
+}
+
 function ajax_snippets_mcp_has_keypair()
 {
     return (string) get_option(AJAX_SNIPPETS_MCP_OPT_SECRET_KEY, '') !== '';
@@ -45,14 +60,14 @@ function ajax_snippets_mcp_generate_keypair()
     update_option(AJAX_SNIPPETS_MCP_OPT_FP,         $fp,                  true);
     update_option(AJAX_SNIPPETS_MCP_OPT_STATUS,     'unregistered',       true);
 
-    sodium_memzero($sk);
+    ajax_snippets_mcp_memzero($sk);
 
     return ['fp' => $fp, 'pubkey_b64' => base64_encode($pk)];
 }
 
 /**
  * Returns the full 64-byte secret key reconstructed from the seed in wp_options.
- * Caller must sodium_memzero() the returned string after use.
+ * Caller must ajax_snippets_mcp_memzero() the returned string after use.
  */
 function ajax_snippets_mcp_load_secret_key()
 {
@@ -66,7 +81,7 @@ function ajax_snippets_mcp_load_secret_key()
     }
     $kp = sodium_crypto_sign_seed_keypair($seed);
     $sk = sodium_crypto_sign_secretkey($kp);
-    sodium_memzero($seed);
+    ajax_snippets_mcp_memzero($seed);
     return $sk;
 }
 
@@ -89,7 +104,7 @@ function ajax_snippets_mcp_sign_request($method, $path, $body)
     try {
         $sig = sodium_crypto_sign_detached($payload, $sk);
     } finally {
-        sodium_memzero($sk);
+        ajax_snippets_mcp_memzero($sk);
     }
 
     return [

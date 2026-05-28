@@ -17,6 +17,44 @@ const AJAX_SNIPPETS_MCP_REST_NS = 'ajax-snippets/v1';
 
 add_action('rest_api_init', 'ajax_snippets_mcp_register_rest_routes');
 
+/**
+ * Suppress WordPress's built-in REST auth (Application Passwords, cookie auth)
+ * for our endpoints. We rely entirely on the Ed25519 signature verified in
+ * `ajax_snippets_mcp_rest_permission`, and the `Authorization` header is
+ * needed for a different purpose here: getting through a server-level HTTP
+ * Basic Auth prompt (typical for staging hosts like *.wpstage.net).
+ *
+ * Without this, WP sees the bridge's `Authorization: Basic <nginx-creds>`
+ * header, tries to authenticate it as an Application Password, fails, and
+ * returns 401 `invalid_username` before our permission_callback ever runs.
+ *
+ * Priority 999 to run after `wp_authenticate_application_password` has
+ * populated the error so we can override it.
+ */
+add_filter('rest_authentication_errors', 'ajax_snippets_mcp_suppress_wp_rest_auth_for_our_routes', 999);
+
+function ajax_snippets_mcp_suppress_wp_rest_auth_for_our_routes($result)
+{
+    if (!isset($_SERVER['REQUEST_URI'])) {
+        return $result;
+    }
+    $uri = (string) wp_unslash($_SERVER['REQUEST_URI']);
+    $path = parse_url($uri, PHP_URL_PATH);
+    if (!is_string($path)) {
+        return $result;
+    }
+    // Match both /wp-json/ajax-snippets/v1/* and /index.php?rest_route=/ajax-snippets/v1/*
+    $isOurRoute = (strpos($path, '/wp-json/' . AJAX_SNIPPETS_MCP_REST_NS . '/') !== false)
+        || (strpos($uri, 'rest_route=/' . AJAX_SNIPPETS_MCP_REST_NS . '/') !== false);
+    if (!$isOurRoute) {
+        return $result;
+    }
+    // Wipe whatever earlier filters complained about — the route's own
+    // permission_callback will reject the request if our X-Auth-* signature
+    // is missing or invalid.
+    return null;
+}
+
 function ajax_snippets_mcp_register_rest_routes()
 {
     register_rest_route(AJAX_SNIPPETS_MCP_REST_NS, '/execute', [

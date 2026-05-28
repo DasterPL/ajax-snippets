@@ -18,11 +18,44 @@ const AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT      = 'ajax_snippets_mcp_autoregister_
 const AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_OPT   = 'ajax_snippets_mcp_autoregister_backoff_until';
 const AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_SEC   = 600; // 10 minutes between failed attempts
 
+/**
+ * Hosts blocked from zero-click auto-registration. Staging copies and shared
+ * dev environments would otherwise self-enroll under the production team's
+ * registry and pollute the site list. The manual snippet template ("MCP:
+ * register this site") still works on these hosts when explicitly invoked.
+ *
+ * Patterns are matched against the home_url host (lowercased) with `fnmatch`.
+ */
+function ajax_snippets_mcp_autoregister_blocked_patterns()
+{
+    return apply_filters('ajax_snippets_mcp_autoregister_blocked_hosts', [
+        '*.wpstage.net',
+        '*.dev.apturn.pl',
+    ]);
+}
+
+function ajax_snippets_mcp_autoregister_is_blocked_host()
+{
+    $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
+    if ($host === '') {
+        return false;
+    }
+    foreach (ajax_snippets_mcp_autoregister_blocked_patterns() as $pattern) {
+        if (fnmatch((string) $pattern, $host)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 add_action('admin_init', 'ajax_snippets_mcp_autoregister_tick', 20);
 
 function ajax_snippets_mcp_autoregister_tick()
 {
     if (!ajax_snippets_mcp_is_enabled()) {
+        return;
+    }
+    if (ajax_snippets_mcp_autoregister_is_blocked_host()) {
         return;
     }
     if (get_option(AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT)) {

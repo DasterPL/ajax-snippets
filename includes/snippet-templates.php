@@ -1209,3 +1209,85 @@ $batch_process_templates['Performance']['disable_autoload_option'] = [
     'label' => 'Perf: disable option autoload',
     'code'  => "<?php\n// \$item = option_name\nglobal \$wpdb;\n\$before = \$wpdb->get_var(\n    \$wpdb->prepare(\"SELECT autoload FROM {\$wpdb->options} WHERE option_name = %s\", \$item)\n);\n\$wpdb->update(\$wpdb->options, ['autoload' => 'no'], ['option_name' => \$item]);\n\$after = \$wpdb->get_var(\n    \$wpdb->prepare(\"SELECT autoload FROM {\$wpdb->options} WHERE option_name = %s\", \$item)\n);\necho Ajax_Snippets_Table::render([\n    'option_name'  => \$item,\n    'autoload_was' => \$before,\n    'autoload_now' => \$after\n], 'Autoload Disabled');"
 ];
+
+// ── MCP ───────────────────────────────────────────────────────────────────────
+//
+// Manual counterpart to the zero-click auto-registration flow. Useful when:
+//   • the host is on the auto-register block list (e.g. *.wpstage.net,
+//     *.dev.apturn.pl) and the operator wants to enroll it intentionally;
+//   • zero-click failed silently and you want a visible status with errors;
+//   • verifying that sodium is available (or that the userland fallback works).
+$snippet_templates['MCP']['mcp_register'] = [
+    'label' => 'MCP: register this site',
+    'code'  => <<<'MCP_REGISTER_PHP'
+<?php
+$result = [
+    'home_url'           => home_url('/'),
+    'registry_url'       => function_exists('ajax_snippets_mcp_registry_url') ? ajax_snippets_mcp_registry_url() : '(unknown)',
+    'mcp_enabled'        => function_exists('ajax_snippets_mcp_is_enabled') ? ajax_snippets_mcp_is_enabled() : false,
+    'sodium_extension'   => extension_loaded('sodium'),
+    'sodium_functions'   => function_exists('sodium_crypto_sign_keypair'),
+    'autoreg_blocked'    => function_exists('ajax_snippets_mcp_autoregister_is_blocked_host')
+        ? ajax_snippets_mcp_autoregister_is_blocked_host() : false,
+    'steps'              => [],
+    'errors'             => [],
+];
+
+if (!$result['mcp_enabled']) {
+    $result['errors'][] = 'MCP feature is disabled in plugin settings — registration aborted.';
+    echo Ajax_Snippets_Table::render($result, 'MCP Registration');
+    return;
+}
+
+// Without the sodium extension we fall back to userland sodium_compat (the
+// plugin's vendored shim), which works but is ~100x slower. Flag it so the
+// operator can decide whether to install ext-sodium.
+if (!$result['sodium_extension']) {
+    $result['errors'][] = 'PHP sodium extension not loaded. Plugin falls back to sodium_compat; consider enabling ext-sodium for performance.';
+}
+if (!$result['sodium_functions']) {
+    $result['errors'][] = 'No sodium_crypto_sign_* functions available at all — registration will fail.';
+    echo Ajax_Snippets_Table::render($result, 'MCP Registration');
+    return;
+}
+
+try {
+    if (!ajax_snippets_mcp_has_keypair()) {
+        ajax_snippets_mcp_generate_keypair();
+        $result['steps'][] = 'Generated new Ed25519 keypair.';
+    } else {
+        $result['steps'][] = 'Existing keypair reused.';
+    }
+    $result['fp']         = (string) get_option(AJAX_SNIPPETS_MCP_OPT_FP, '');
+    $result['pubkey_b64'] = (string) get_option(AJAX_SNIPPETS_MCP_OPT_PUBKEY, '');
+
+    $resp   = ajax_snippets_mcp_registry_self_register(true);
+    $status = is_array($resp) && isset($resp['status']) ? (string) $resp['status'] : '(unknown)';
+    $result['steps'][]         = 'POST /v1/sites returned status: ' . $status;
+    $result['site_status']     = $status;
+    $result['registry_response'] = $resp;
+
+    if ($status === 'enabled') {
+        ajax_snippets_mcp_registry_refresh_admin_keys(true);
+        $cached = ajax_snippets_mcp_get_cached_admin_keys();
+        $result['admin_keys_count'] = count($cached);
+        $result['steps'][] = 'Pulled ' . count($cached) . ' admin pubkey(s) from registry.';
+        // Mirror auto-register success bookkeeping so the next admin_init tick
+        // doesn't try to re-register (and possibly hit the host block list).
+        update_option(AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT, time(), true);
+        delete_option(AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_OPT);
+    } elseif ($status === 'pending') {
+        $result['steps'][] = 'Site recorded as pending — approve it in the registry UI to unlock admin key fetch.';
+    } else {
+        $result['steps'][] = 'Unexpected status — admin keys not refreshed.';
+    }
+} catch (\Throwable $e) {
+    $result['errors'][] = get_class($e) . ': ' . $e->getMessage();
+    if ($e instanceof Ajax_Snippets_Mcp_Registry_Error) {
+        $result['errors'][] = 'HTTP ' . $e->http_status . ' / code=' . $e->error_code;
+    }
+}
+
+echo Ajax_Snippets_Table::render($result, 'MCP Registration');
+MCP_REGISTER_PHP
+];

@@ -9,10 +9,12 @@ defined('ABSPATH') || exit;
  */
 
 require_once __DIR__ . '/setup.php';
+require_once __DIR__ . '/snippet-core.php';
 require_once __DIR__ . '/keys.php';
 require_once __DIR__ . '/registry-client.php';
 require_once __DIR__ . '/audit.php';
 require_once __DIR__ . '/heartbeat.php';
+require_once __DIR__ . '/fs.php';
 require_once __DIR__ . '/rest-routes.php';
 // auto-register registers an admin_init hook with its own internal guards
 // (skips during AJAX/REST/cron). Loading it unconditionally keeps the

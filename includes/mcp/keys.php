@@ -198,9 +198,11 @@ function ajax_snippets_mcp_get_cached_admin_keys()
 
 function ajax_snippets_mcp_store_admin_keys(array $keys, $version)
 {
-    update_option(AJAX_SNIPPETS_MCP_OPT_ADMIN_KEYS, wp_json_encode($keys), true);
-    update_option(AJAX_SNIPPETS_MCP_OPT_KEYS_VERSION, (int) $version, true);
-    update_option(AJAX_SNIPPETS_MCP_OPT_KEYS_UPDATED, time(), true);
+    // autoload=no: these are only read inside the REST permission_callback, so
+    // they should not be loaded into memory on every front-end page request.
+    update_option(AJAX_SNIPPETS_MCP_OPT_ADMIN_KEYS, wp_json_encode($keys), false);
+    update_option(AJAX_SNIPPETS_MCP_OPT_KEYS_VERSION, (int) $version, false);
+    update_option(AJAX_SNIPPETS_MCP_OPT_KEYS_UPDATED, time(), false);
 }
 
 function ajax_snippets_mcp_consume_nonce($nonce, $expiresAt)

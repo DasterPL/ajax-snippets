@@ -49,6 +49,23 @@ function ajax_snippets_mcp_suppress_wp_rest_auth_for_our_routes($result)
     if (!$isOurRoute) {
         return $result;
     }
+
+    // Only bypass WP/nginx auth when this really looks like a signed MCP call.
+    // Narrowing both conditions prevents us from silently suppressing another
+    // plugin's authentication on requests that merely hit our path prefix.
+    //   1) MCP must be enabled on this site, AND
+    //   2) the request must actually carry the MCP signature headers
+    //      (X-Auth-Fp / X-Auth-Signature — verified later in
+    //      ajax_snippets_mcp_verify_admin_request).
+    // Otherwise we leave $result untouched so we never mask someone else's auth.
+    if (!function_exists('ajax_snippets_mcp_is_enabled') || !ajax_snippets_mcp_is_enabled()) {
+        return $result;
+    }
+    $hasSignature = isset($_SERVER['HTTP_X_AUTH_FP']) && isset($_SERVER['HTTP_X_AUTH_SIGNATURE']);
+    if (!$hasSignature) {
+        return $result;
+    }
+
     // Wipe whatever earlier filters complained about — the route's own
     // permission_callback will reject the request if our X-Auth-* signature
     // is missing or invalid.
@@ -80,6 +97,33 @@ function ajax_snippets_mcp_register_rest_routes()
     register_rest_route(AJAX_SNIPPETS_MCP_REST_NS, '/search', [
         'methods'             => 'GET',
         'callback'            => 'ajax_snippets_mcp_rest_search',
+        'permission_callback' => 'ajax_snippets_mcp_rest_permission',
+    ]);
+
+    // Safe filesystem operations (read/write/edit/list) — see includes/mcp/fs.php.
+    register_rest_route(AJAX_SNIPPETS_MCP_REST_NS, '/fs/list', [
+        'methods'             => 'POST',
+        'callback'            => 'ajax_snippets_mcp_rest_fs_list',
+        'permission_callback' => 'ajax_snippets_mcp_rest_permission',
+    ]);
+    register_rest_route(AJAX_SNIPPETS_MCP_REST_NS, '/fs/read', [
+        'methods'             => 'POST',
+        'callback'            => 'ajax_snippets_mcp_rest_fs_read',
+        'permission_callback' => 'ajax_snippets_mcp_rest_permission',
+    ]);
+    register_rest_route(AJAX_SNIPPETS_MCP_REST_NS, '/fs/write', [
+        'methods'             => 'POST',
+        'callback'            => 'ajax_snippets_mcp_rest_fs_write',
+        'permission_callback' => 'ajax_snippets_mcp_rest_permission',
+    ]);
+    register_rest_route(AJAX_SNIPPETS_MCP_REST_NS, '/fs/edit', [
+        'methods'             => 'POST',
+        'callback'            => 'ajax_snippets_mcp_rest_fs_edit',
+        'permission_callback' => 'ajax_snippets_mcp_rest_permission',
+    ]);
+    register_rest_route(AJAX_SNIPPETS_MCP_REST_NS, '/fs/grep', [
+        'methods'             => 'POST',
+        'callback'            => 'ajax_snippets_mcp_rest_fs_grep',
         'permission_callback' => 'ajax_snippets_mcp_rest_permission',
     ]);
 }
@@ -196,10 +240,10 @@ function ajax_snippets_mcp_rest_execute(WP_REST_Request $request)
         return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'Empty code']], 422);
     }
     return ajax_snippets_mcp_with_runner($request, 'execute', $code, function () use ($code) {
-        $result = ajax_snippets_guarded_eval($code);
+        $result = ajax_snippets_core_execute($code);
         return [
             'ok'     => true,
-            'output' => (string) $result['output'],
+            'output' => $result['output'],
             'return' => $result['return'],
         ];
     });
@@ -213,19 +257,11 @@ function ajax_snippets_mcp_rest_batch_init(WP_REST_Request $request)
         return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'Empty fetch_code']], 422);
     }
     return ajax_snippets_mcp_with_runner($request, 'batch_init', $code, function () use ($code) {
-        $result = ajax_snippets_guarded_eval($code);
-        $data = $result['return'];
-        if (!is_array($data)) {
-            throw new \UnexpectedValueException('fetch_code must return an array.');
-        }
-        $uid = get_current_user_id();
-        set_transient('ajax-snippet-batch-data_' . $uid, $data, DAY_IN_SECONDS);
-        set_transient('ajax-snippet-batch-index_' . $uid, 0, DAY_IN_SECONDS);
-        delete_transient('ajax-snippet-batch-prev_' . $uid);
+        $result = ajax_snippets_core_batch_init($code, get_current_user_id());
         return [
             'ok'     => true,
-            'output' => (string) $result['output'],
-            'count'  => count($data),
+            'output' => $result['output'],
+            'count'  => $result['count'],
         ];
     });
 }
@@ -238,70 +274,31 @@ function ajax_snippets_mcp_rest_batch_next(WP_REST_Request $request)
         return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'Empty process_code']], 422);
     }
     return ajax_snippets_mcp_with_runner($request, 'batch_next', $code, function () use ($request, $code) {
-        $body = $request->get_json_params();
-        $uid  = get_current_user_id();
-        $data = get_transient('ajax-snippet-batch-data_' . $uid);
-        if (!is_array($data)) {
-            throw new \RuntimeException('No batch data. Run /batch/init first.');
-        }
+        $body      = $request->get_json_params();
         $index     = isset($body['index']) ? max(0, (int) $body['index']) : 0;
         $batchSize = isset($body['batch_size']) ? max(1, (int) $body['batch_size']) : 10;
-        $total     = count($data);
-        if ($index >= $total) {
-            delete_transient('ajax-snippet-batch-data_' . $uid);
-            delete_transient('ajax-snippet-batch-index_' . $uid);
-            delete_transient('ajax-snippet-batch-prev_' . $uid);
-            return [
-                'ok'     => true,
-                'output' => '',
-                'done'   => true,
-                'index'  => $index,
-                'total'  => $total,
-            ];
-        }
 
-        $prev      = get_transient('ajax-snippet-batch-prev_' . $uid);
-        $start     = $index;
-        $end       = min($index + $batchSize, $total);
-        $messages  = '';
-        $return    = null;
-        for ($i = $start; $i < $end; $i++) {
-            $item   = $data[$i];
-            $idx    = $i;
-            $result = ajax_snippets_guarded_eval($code, compact('item', 'idx', 'total', 'data', 'prev') + ['index' => $idx]);
-            $messages .= $result['output'];
-            $return    = $result['return'];
-            $prev      = $return;
-        }
-        $next = $end;
-        set_transient('ajax-snippet-batch-index_' . $uid, $next, DAY_IN_SECONDS);
-        set_transient('ajax-snippet-batch-prev_' . $uid, $prev, DAY_IN_SECONDS);
-        return [
+        $result = ajax_snippets_core_batch_next($code, get_current_user_id(), $index, $batchSize);
+        // Preserve the historical REST envelope: 'return' present only on a
+        // progress (non-done-early) result.
+        $response = [
             'ok'     => true,
-            'output' => $messages,
-            'return' => $return,
-            'done'   => $next >= $total,
-            'index'  => $next,
-            'total'  => $total,
+            'output' => $result['output'],
+            'done'   => $result['done'],
+            'index'  => $result['index'],
+            'total'  => $result['total'],
         ];
+        if (array_key_exists('return', $result)) {
+            $response['return'] = $result['return'];
+        }
+        return $response;
     });
 }
 
 function ajax_snippets_mcp_rest_batch_status(WP_REST_Request $request)
 {
     return ajax_snippets_mcp_with_runner($request, 'batch_status', '', function () {
-        $uid  = get_current_user_id();
-        $data = get_transient('ajax-snippet-batch-data_' . $uid);
-        if (!is_array($data)) {
-            return ['ok' => true, 'exists' => false];
-        }
-        $index = get_transient('ajax-snippet-batch-index_' . $uid);
-        return [
-            'ok'     => true,
-            'exists' => true,
-            'index'  => (int) ($index === false ? 0 : $index),
-            'total'  => count($data),
-        ];
+        return ['ok' => true] + ajax_snippets_core_batch_status(get_current_user_id());
     });
 }
 
@@ -311,79 +308,96 @@ function ajax_snippets_mcp_rest_search(WP_REST_Request $request)
     $term   = sanitize_text_field((string) $request->get_param('q'));
 
     return ajax_snippets_mcp_with_runner($request, 'search', '', function () use ($source, $term) {
-        $results = ajax_snippets_mcp_run_search($source, $term);
+        $results = ajax_snippets_core_search($source, $term);
         return ['results' => $results];
     });
 }
 
 /**
- * Replica of the search logic in includes/ajax-handlers.php — kept here so we
- * can call it without going through admin-ajax. If you change one, mirror the
- * other (or factor both to a shared helper in a future refactor).
- *
- * @return list<array{id:string,text:string}>
+ * Thin adapters over Ajax_Snippets_FS. Each parses JSON body, validates the
+ * minimal shape (422 on bad input, mirroring /execute), and delegates to
+ * with_runner() for user-switch + audit + success/error envelope.
  */
-function ajax_snippets_mcp_run_search($source, $term)
+function ajax_snippets_mcp_rest_fs_list(WP_REST_Request $request)
 {
-    $results = [];
-    if ($source === 'user') {
-        $users = get_users([
-            'search' => '*' . $term . '*',
-            'number' => 20,
-            'fields' => ['ID', 'display_name', 'user_login'],
-        ]);
-        foreach ($users as $u) {
-            $results[] = [
-                'id'   => (string) $u->ID,
-                'text' => $u->display_name . ' (' . $u->user_login . ', #' . $u->ID . ')',
-            ];
-        }
-    } elseif ($source === 'post') {
-        $query = new WP_Query([
-            's'              => $term,
-            'posts_per_page' => 20,
-            'post_type'      => 'any',
-            'post_status'    => 'any',
-        ]);
-        foreach ($query->posts as $p) {
-            $results[] = ['id' => (string) $p->ID, 'text' => $p->post_title . ' (#' . $p->ID . ')'];
-        }
-    } elseif ($source === 'order' && class_exists('WC_Order_Query')) {
-        $q = new WC_Order_Query(['limit' => 20, 'return' => 'ids', 'search' => $term]);
-        foreach ($q->get_orders() as $oid) {
-            $o = wc_get_order($oid);
-            if (!$o) continue;
-            $name = '';
-            if (method_exists($o, 'get_formatted_billing_full_name')) {
-                $name = $o->get_formatted_billing_full_name();
-            }
-            $results[] = ['id' => (string) $oid, 'text' => '#' . $oid . ($name !== '' ? ' - ' . $name : '')];
-        }
-    } elseif ($source === 'product' && function_exists('wc_get_products')) {
-        $ids = wc_get_products([
-            'limit'  => 20,
-            'return' => 'ids',
-            'search' => $term,
-            'status' => 'any',
-            'type'   => ['simple', 'variable', 'variation'],
-        ]);
-        foreach ($ids as $pid) {
-            $p = wc_get_product($pid);
-            if (!$p) continue;
-            $title = $p->get_name();
-            if ($p->is_type('variation')) $title = 'Variation: ' . $title;
-            $results[] = ['id' => (string) $pid, 'text' => $title . ' (#' . $pid . ')'];
-        }
-    } elseif ($source === 'subscription') {
-        $query = new WP_Query([
-            's'              => $term,
-            'posts_per_page' => 20,
-            'post_type'      => 'shop_subscription',
-            'post_status'    => 'any',
-        ]);
-        foreach ($query->posts as $p) {
-            $results[] = ['id' => (string) $p->ID, 'text' => $p->post_title . ' (#' . $p->ID . ')'];
-        }
+    $body = $request->get_json_params();
+    $path = is_array($body) && isset($body['path']) ? (string) $body['path'] : '';
+    if ($path === '') {
+        return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'Empty path']], 422);
     }
-    return $results;
+    return ajax_snippets_mcp_with_runner($request, 'fs.list', 'fs.list ' . $path, function () use ($path) {
+        return ['ok' => true] + Ajax_Snippets_FS::list_dir($path);
+    });
+}
+
+function ajax_snippets_mcp_rest_fs_read(WP_REST_Request $request)
+{
+    $body = $request->get_json_params();
+    $path = is_array($body) && isset($body['path']) ? (string) $body['path'] : '';
+    if ($path === '') {
+        return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'Empty path']], 422);
+    }
+    return ajax_snippets_mcp_with_runner($request, 'fs.read', 'fs.read ' . $path, function () use ($path) {
+        return ['ok' => true] + Ajax_Snippets_FS::read_file($path);
+    });
+}
+
+function ajax_snippets_mcp_rest_fs_write(WP_REST_Request $request)
+{
+    $body = $request->get_json_params();
+    $path = is_array($body) && isset($body['path']) ? (string) $body['path'] : '';
+    if ($path === '') {
+        return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'Empty path']], 422);
+    }
+    if (!is_array($body) || !isset($body['content']) || !is_string($body['content'])) {
+        return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'content must be a string']], 422);
+    }
+    $content = (string) $body['content'];
+    $create  = isset($body['create']) ? (bool) $body['create'] : true;
+    return ajax_snippets_mcp_with_runner($request, 'fs.write', 'fs.write ' . $path, function () use ($path, $content, $create) {
+        return ['ok' => true] + Ajax_Snippets_FS::write_file($path, $content, $create);
+    });
+}
+
+function ajax_snippets_mcp_rest_fs_edit(WP_REST_Request $request)
+{
+    $body = $request->get_json_params();
+    $path = is_array($body) && isset($body['path']) ? (string) $body['path'] : '';
+    if ($path === '') {
+        return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'Empty path']], 422);
+    }
+    $find = is_array($body) && isset($body['find']) ? (string) $body['find'] : '';
+    if ($find === '') {
+        return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'Empty find']], 422);
+    }
+    if (!isset($body['replace']) || !is_string($body['replace'])) {
+        return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'replace must be a string']], 422);
+    }
+    $replace = (string) $body['replace'];
+    $all     = isset($body['all']) ? (bool) $body['all'] : false;
+    return ajax_snippets_mcp_with_runner($request, 'fs.edit', 'fs.edit ' . $path, function () use ($path, $find, $replace, $all) {
+        return ['ok' => true] + Ajax_Snippets_FS::edit_file($path, $find, $replace, $all);
+    });
+}
+
+function ajax_snippets_mcp_rest_fs_grep(WP_REST_Request $request)
+{
+    $body = $request->get_json_params();
+    $path = is_array($body) && isset($body['path']) ? (string) $body['path'] : '';
+    if ($path === '') {
+        return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'Empty path']], 422);
+    }
+    $query = is_array($body) && isset($body['query']) ? (string) $body['query'] : '';
+    if ($query === '') {
+        return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'Empty query']], 422);
+    }
+    $opts = [
+        'regex'       => !empty($body['regex']),
+        'ignore_case' => !empty($body['ignore_case']),
+        'glob'        => isset($body['glob']) ? (string) $body['glob'] : '',
+        'max_results' => isset($body['max_results']) ? (int) $body['max_results'] : 0,
+    ];
+    return ajax_snippets_mcp_with_runner($request, 'fs.grep', 'fs.grep ' . $path, function () use ($path, $query, $opts) {
+        return ['ok' => true] + Ajax_Snippets_FS::grep($path, $query, $opts);
+    });
 }

@@ -48,34 +48,23 @@ function ajax_snippets_mcp_audit_record(array $entry)
     );
     $id = (int) $wpdb->insert_id;
 
-    // Synchronous push — if it fails we keep the row with pushed_at=NULL for
-    // retry by the heartbeat. Audit is a side-effect of the request so a
-    // failure here must NEVER tank the user-facing response.
-    $pushed = ajax_snippets_mcp_audit_push_row($id, $entry, $codeHash, $now);
-    if ($pushed) {
-        $wpdb->update($table, ['pushed_at' => $now], ['id' => $id], ['%d'], ['%d']);
+    // Audit is a side-effect of the request, so the REST response must NEVER
+    // wait on the registry. We persist the row locally (pushed_at=NULL) and
+    // hand the actual network push off out-of-band: a single-event cron flush
+    // runs right after this request, and the daily heartbeat retries anything
+    // still unpushed. No blocking wp_remote_request on the hot path.
+    if (!wp_next_scheduled('ajax_snippets_mcp_audit_flush')) {
+        wp_schedule_single_event(time(), 'ajax_snippets_mcp_audit_flush');
     }
     return $id;
 }
 
-function ajax_snippets_mcp_audit_push_row($id, array $entry, $codeHash, $ts)
-{
-    $code    = (string) ($entry['code'] ?? '');
-    $preview = $code === '' ? null : substr(preg_replace('/\s+/', ' ', $code), 0, 200);
-
-    return ajax_snippets_mcp_registry_push_audit([
-        'ts'           => (int) $ts,
-        'caller_fp'    => $entry['caller_fp'] ?? null,
-        'caller_kind'  => $entry['caller_kind'] ?? 'unknown',
-        'action'       => $entry['action'],
-        'code_hash'    => $codeHash,
-        'code_preview' => $preview,
-        'status'       => $entry['status'],
-        'error_type'   => $entry['error_type'] ?? null,
-        'error_msg'    => $entry['error_msg'] ?? null,
-        'duration_ms'  => $entry['duration_ms'] ?? null,
-    ]);
-}
+/**
+ * Out-of-band flush of locally-stored, not-yet-pushed audit rows. Scheduled as
+ * a single cron event by ajax_snippets_mcp_audit_record() so the user-facing
+ * REST request never blocks on the registry.
+ */
+add_action('ajax_snippets_mcp_audit_flush', 'ajax_snippets_mcp_audit_retry_unpushed');
 
 function ajax_snippets_mcp_audit_retry_unpushed($limit = 50)
 {

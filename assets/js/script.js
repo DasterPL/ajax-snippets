@@ -707,11 +707,6 @@ jQuery(document).ready(function ($) {
     };
     initBatchEditors();
     initOutputFormatToggle('batch_output_format_pre', 'batch_output_format_pre', $('#batch_fetch_output, #batch_process_output'));
-    // editor.on("inputRead", function (editor, event) {
-    //     if (event.text[0].match(/[a-zA-Z_]/)) {
-    //         editor.showHint({ hint: CodeMirror.hint.php });
-    //     }
-    // });
 
     const copyToClipboard = (text, $btn) => {
         const original = $btn.text();

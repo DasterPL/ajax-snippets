@@ -22,9 +22,18 @@ defined('ABSPATH') || exit;
  *   - A path starting with '/' or a Windows drive letter ("C:\", "C:/") is
  *     treated as ABSOLUTE on the server.
  *   - Anything else is treated as RELATIVE to WP_CONTENT_DIR.
- *   - The resolved real path must live inside one of the allowed roots
- *     (theme root, plugins, mu-plugins, uploads). Everything else — wp-config.php,
- *     ABSPATH root, wp-admin, wp-includes — is rejected.
+ *   - ASYMMETRIC scope:
+ *       * READS (read_file / list_dir / grep) may target the whole WordPress
+ *         install (ABSPATH) — including wp-config.php and core. There is nothing
+ *         to hide here: execute_snippet can already read those and dump their
+ *         constants, so a read block would only add friction.
+ *       * WRITES (write_file / edit_file) are confined to wp-content only.
+ *         wp-config.php and core stay non-writable — a botched write there is a
+ *         footgun; use execute_snippet if you really must touch them.
+ *   - Paths outside the relevant root set are rejected (and reads never escape
+ *     ABSPATH to the wider server filesystem).
+ *   - Missing parent directories are created on write (mkdir -p), as long as the
+ *     final path stays inside wp-content.
  */
 
 if (!class_exists('Ajax_Snippets_FS')) {
@@ -49,29 +58,33 @@ if (!class_exists('Ajax_Snippets_FS')) {
         const GREP_SKIP_DIRS = ['node_modules', '.git', 'ajax-snippets-fs-backups'];
 
         /**
-         * Allowed roots (each itself passed through realpath). A target is valid
-         * iff its canonical path equals a root or sits beneath it on a
-         * DIRECTORY_SEPARATOR boundary.
+         * WRITE roots (each passed through realpath). Writes/edits are confined
+         * to the wp-content tree: themes, plugins, mu-plugins, uploads, cache,
+         * languages, upgrade and any custom subdirectories. wp-config.php and the
+         * WordPress core (in ABSPATH, one level up) are NOT writable — a botched
+         * write there is a footgun, and editing them is left to execute_snippet.
          *
          * @return list<string> canonical root paths (no trailing separator)
          */
-        public static function allowed_roots()
+        public static function write_roots()
         {
             $roots = [];
 
-            // Themes.
+            if (defined('WP_CONTENT_DIR')) {
+                $roots[] = WP_CONTENT_DIR;
+            }
+            // Also include these explicitly in case a site relocates them
+            // OUTSIDE wp-content (some setups move uploads or the plugins dir).
+            // Duplicates with WP_CONTENT_DIR are de-duped below.
             if (function_exists('get_theme_root')) {
                 $roots[] = get_theme_root();
             }
-            // Plugins.
             if (defined('WP_PLUGIN_DIR')) {
                 $roots[] = WP_PLUGIN_DIR;
             }
-            // Must-use plugins (optional).
             if (defined('WPMU_PLUGIN_DIR')) {
                 $roots[] = WPMU_PLUGIN_DIR;
             }
-            // Uploads.
             if (function_exists('wp_upload_dir')) {
                 $upload = wp_upload_dir(null, false);
                 if (is_array($upload) && !empty($upload['basedir'])) {
@@ -79,6 +92,36 @@ if (!class_exists('Ajax_Snippets_FS')) {
                 }
             }
 
+            return self::canonical_roots($roots);
+        }
+
+        /**
+         * READ roots: the whole WordPress install (ABSPATH) plus the write roots
+         * (covers wp-content even if relocated outside ABSPATH). Reads/list/grep
+         * are deliberately broader than writes — there is no confidentiality to
+         * protect here (execute_snippet can already read wp-config.php and dump
+         * its constants), so restricting reads only adds friction. This still
+         * keeps FS within the install, not the entire server filesystem.
+         *
+         * @return list<string> canonical root paths (no trailing separator)
+         */
+        public static function read_roots()
+        {
+            $roots = self::write_roots();
+            if (defined('ABSPATH')) {
+                array_unshift($roots, ABSPATH);
+            }
+            return self::canonical_roots($roots);
+        }
+
+        /**
+         * De-duplicate + realpath a list of candidate roots.
+         *
+         * @param list<string> $roots
+         * @return list<string> canonical root paths (no trailing separator)
+         */
+        private static function canonical_roots(array $roots)
+        {
             $canonical = [];
             foreach ($roots as $root) {
                 if (!is_string($root) || $root === '') {
@@ -97,12 +140,14 @@ if (!class_exists('Ajax_Snippets_FS')) {
          *
          * @param string $input      Absolute server path or path relative to WP_CONTENT_DIR.
          * @param bool   $must_exist When true the path must already exist (realpath);
-         *                           when false the PARENT directory must exist and the
-         *                           basename is appended.
-         * @return string Canonical absolute path inside an allowed root.
-         * @throws \RuntimeException on empty/traversal/outside-root/missing-parent.
+         *                           when false missing parents are allowed (mkdir -p later).
+         * @param bool   $for_write  When true validate against the WRITE roots
+         *                           (wp-content only); when false against the READ
+         *                           roots (the whole install).
+         * @return string Canonical absolute path inside the relevant root set.
+         * @throws \RuntimeException on empty/traversal/outside-root.
          */
-        public static function resolve_path($input, $must_exist)
+        public static function resolve_path($input, $must_exist, $for_write = false)
         {
             $input = (string) $input;
             if (trim($input) === '') {
@@ -125,22 +170,57 @@ if (!class_exists('Ajax_Snippets_FS')) {
                     throw new \RuntimeException('Path does not exist: ' . $input);
                 }
             } else {
-                // New file: parent dir must exist; basename must be a plain name.
-                $dir  = dirname($absolute);
-                $base = basename($absolute);
-                if ($base === '' || $base === '.' || $base === '..'
-                    || strpbrk($base, '/\\') !== false) {
-                    throw new \RuntimeException('Invalid file name: ' . $input);
-                }
-                $realDir = realpath($dir);
-                if ($realDir === false) {
-                    throw new \RuntimeException('Parent directory does not exist: ' . $dir);
-                }
-                $canonical = rtrim($realDir, '\\/') . DIRECTORY_SEPARATOR . $base;
+                // New file/dir: the full chain need not exist. Canonicalise
+                // against the deepest EXISTING ancestor; missing dirs are created
+                // later by write_atomic (mkdir -p).
+                $canonical = self::canonicalize_nonexistent($absolute);
             }
 
-            self::assert_inside_roots($canonical);
+            self::assert_inside_roots($canonical, $for_write);
             return $canonical;
+        }
+
+        /**
+         * Canonicalise a path that may not fully exist yet. Resolves the deepest
+         * EXISTING ancestor with realpath() (so symlinks and '..' in the existing
+         * portion are collapsed), then re-appends the remaining segments after
+         * rejecting traversal ('.', '..', empty). The caller still runs
+         * assert_inside_roots() on the result, so an escape via the existing
+         * portion is caught there.
+         *
+         * @throws \RuntimeException on a traversal segment or no existing ancestor.
+         */
+        private static function canonicalize_nonexistent($absolute)
+        {
+            $absolute = rtrim($absolute, '\\/');
+            if ($absolute === '') {
+                throw new \RuntimeException('Invalid path.');
+            }
+            $real = realpath($absolute);
+            if ($real !== false) {
+                return rtrim($real, '\\/');
+            }
+
+            $tail    = [];
+            $current = $absolute;
+            while (true) {
+                $parent = dirname($current);
+                $base   = basename($current);
+                if ($base === '' || $base === '.' || $base === '..') {
+                    throw new \RuntimeException('Invalid path segment in: ' . $absolute);
+                }
+                array_unshift($tail, $base);
+
+                $realParent = realpath($parent);
+                if ($realParent !== false) {
+                    return rtrim($realParent, '\\/') . DIRECTORY_SEPARATOR
+                        . implode(DIRECTORY_SEPARATOR, $tail);
+                }
+                if ($parent === $current) {
+                    throw new \RuntimeException('No existing ancestor directory for: ' . $absolute);
+                }
+                $current = $parent;
+            }
         }
 
         /**
@@ -159,11 +239,13 @@ if (!class_exists('Ajax_Snippets_FS')) {
         }
 
         /**
-         * @throws \RuntimeException if $canonical is not within any allowed root.
+         * @param bool $for_write Validate against WRITE roots (wp-content) when
+         *                        true, otherwise READ roots (the whole install).
+         * @throws \RuntimeException if $canonical is not within the relevant roots.
          */
-        private static function assert_inside_roots($canonical)
+        private static function assert_inside_roots($canonical, $for_write = false)
         {
-            $roots = self::allowed_roots();
+            $roots = $for_write ? self::write_roots() : self::read_roots();
             foreach ($roots as $root) {
                 if ($canonical === $root) {
                     return;
@@ -173,8 +255,14 @@ if (!class_exists('Ajax_Snippets_FS')) {
                     return;
                 }
             }
+            if ($for_write) {
+                throw new \RuntimeException(
+                    'Path is outside wp-content; writes to wp-config.php / WordPress core are not allowed '
+                    . '(use execute_snippet for those): ' . $canonical
+                );
+            }
             throw new \RuntimeException(
-                'Path is outside the allowed roots (themes, plugins, mu-plugins, uploads): ' . $canonical
+                'Path is outside the WordPress install (ABSPATH): ' . $canonical
             );
         }
 
@@ -308,7 +396,11 @@ if (!class_exists('Ajax_Snippets_FS')) {
 
             $dir = dirname($path);
             if (!is_dir($dir)) {
-                throw new \RuntimeException('Target directory does not exist: ' . $dir);
+                // Create missing parent directories (mkdir -p). $dir is already
+                // validated to live inside an allowed root by resolve_path().
+                if (!wp_mkdir_p($dir)) {
+                    throw new \RuntimeException('Could not create target directory: ' . $dir);
+                }
             }
 
             $tmp = $dir . DIRECTORY_SEPARATOR . '.ajax-snippets-fs-' . uniqid('', true) . '.tmp';
@@ -539,7 +631,7 @@ if (!class_exists('Ajax_Snippets_FS')) {
                 );
             }
 
-            $canonical = self::resolve_path($path, false);
+            $canonical = self::resolve_path($path, false, true);
 
             $exists = file_exists($canonical);
             if (!$exists && !$create) {
@@ -593,7 +685,7 @@ if (!class_exists('Ajax_Snippets_FS')) {
                 throw new \RuntimeException('find string is required.');
             }
 
-            $canonical = self::resolve_path($path, true);
+            $canonical = self::resolve_path($path, true, true);
             if (is_dir($canonical)) {
                 throw new \RuntimeException('Path is a directory, not a file: ' . $canonical);
             }

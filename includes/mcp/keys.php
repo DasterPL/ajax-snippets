@@ -37,6 +37,23 @@ function ajax_snippets_mcp_has_keypair()
 }
 
 /**
+ * Wipe the keypair and all derived state so a fresh keypair can be generated.
+ * Does NOT delete auto-register bookkeeping options — callers that need to
+ * reset those (tick, manual snippet) do so themselves.
+ */
+function ajax_snippets_mcp_wipe_keypair()
+{
+    delete_option(AJAX_SNIPPETS_MCP_OPT_SECRET_KEY);
+    delete_option(AJAX_SNIPPETS_MCP_OPT_PUBKEY);
+    delete_option(AJAX_SNIPPETS_MCP_OPT_FP);
+    delete_option(AJAX_SNIPPETS_MCP_OPT_ADMIN_KEYS);
+    delete_option(AJAX_SNIPPETS_MCP_OPT_KEYS_VERSION);
+    delete_option(AJAX_SNIPPETS_MCP_OPT_KEYS_UPDATED);
+    delete_option(AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL);
+    update_option(AJAX_SNIPPETS_MCP_OPT_STATUS, 'unregistered', true);
+}
+
+/**
  * Generate and persist a new Ed25519 keypair. Returns [fp, pubkey_b64].
  * Refuses to overwrite an existing pair — rotation goes through a dedicated
  * UI action.
@@ -61,6 +78,7 @@ function ajax_snippets_mcp_generate_keypair()
     update_option(AJAX_SNIPPETS_MCP_OPT_STATUS,     'unregistered',       true);
 
     ajax_snippets_mcp_memzero($sk);
+    update_option(AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL, home_url('/'), false);
 
     return ['fp' => $fp, 'pubkey_b64' => base64_encode($pk)];
 }

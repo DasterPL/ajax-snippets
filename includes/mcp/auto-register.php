@@ -58,6 +58,19 @@ function ajax_snippets_mcp_autoregister_tick()
     if (ajax_snippets_mcp_autoregister_is_blocked_host()) {
         return;
     }
+    // Before checking AUTOREG_DONE: detect domain change caused by cloning this
+    // install to a new host. A cloned site inherits the keypair *and* AUTOREG_DONE,
+    // so without this check the tick would skip re-registration and the old keypair
+    // would never be rotated.
+    if (ajax_snippets_mcp_has_keypair()) {
+        $registeredUrl = (string) get_option(AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL, '');
+        if ($registeredUrl !== '' && $registeredUrl !== home_url('/')) {
+            error_log('[ajax-snippets-mcp] Domain changed ' . $registeredUrl . ' → ' . home_url('/') . ' — regenerating keypair and re-registering.');
+            ajax_snippets_mcp_wipe_keypair();
+            delete_option(AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT);
+            delete_option(AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_OPT);
+        }
+    }
     if (get_option(AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT)) {
         return;
     }
@@ -100,6 +113,10 @@ function ajax_snippets_mcp_autoregister_run()
     // still re-bootstraps correctly without special handling.
     $resp = ajax_snippets_mcp_registry_self_register(true);
     $newStatus = is_array($resp) && isset($resp['status']) ? (string) $resp['status'] : '';
+
+    // Persist the URL this keypair was registered under. generate_keypair() writes
+    // this too, but sites with keypairs pre-dating this feature lack the option.
+    update_option(AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL, home_url('/'), false);
 
     // 3) If the registry approved us (auto-approve or manual), pull the admin
     //    pubkey list so REST requests from the bridge can be verified.

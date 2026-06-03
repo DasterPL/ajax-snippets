@@ -1252,6 +1252,18 @@ if (!$result['sodium_functions']) {
 }
 
 try {
+    // Detect domain change — staging copies cloned from production inherit the
+    // keypair. Without this check manual registration would push the production
+    // public key into the registry under a different URL.
+    if (ajax_snippets_mcp_has_keypair()) {
+        $registeredUrl = (string) get_option(AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL, '');
+        if ($registeredUrl !== '' && $registeredUrl !== home_url('/')) {
+            ajax_snippets_mcp_wipe_keypair();
+            delete_option(AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT);
+            delete_option(AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_OPT);
+            $result['steps'][] = 'Domain changed from ' . $registeredUrl . ' — old keypair wiped, generating new one.';
+        }
+    }
     if (!ajax_snippets_mcp_has_keypair()) {
         ajax_snippets_mcp_generate_keypair();
         $result['steps'][] = 'Generated new Ed25519 keypair.';

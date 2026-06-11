@@ -10,8 +10,11 @@ defined('ABSPATH') || exit;
  *   ajax_snippets_mcp_secret_key   base64(seed, 32B)     ← sensitive, autoload=no
  *   ajax_snippets_mcp_pubkey       base64(pubkey, 32B)
  *   ajax_snippets_mcp_fp           sha256(pubkey) hex
- *   ajax_snippets_mcp_admin_keys   JSON list of admin pubkeys (cached from registry)
- *   ajax_snippets_mcp_admin_keys_version  monotonic integer from registry
+ *   ajax_snippets_mcp_admin_keys         JSON list of admin pubkeys (cached from registry)
+ *   ajax_snippets_mcp_admin_keys_version monotonic integer from registry
+ *   ajax_snippets_mcp_origin_host_hash   sha256(home_url host) at key-generation time.
+ *     Stored as hex — NOT a URL — so WP staging search-replace never rewrites it.
+ *     Used to detect clones / domain migration even after URL substitution.
  *
  * The secret key is never autoloaded and never exposed via REST or admin UI.
  */
@@ -37,6 +40,26 @@ function ajax_snippets_mcp_has_keypair()
 }
 
 /**
+ * Check whether the current keypair was generated on this host.
+ *
+ * Returns true  — hashes match (same host, keypair is local)
+ *         false — hashes differ (domain changed or staging clone)
+ *         null  — no hash stored yet (pre-fix install; caller decides fallback)
+ *
+ * Using sha256(host) instead of the raw URL means WordPress staging
+ * search-replace scripts cannot mask a domain change by rewriting option values.
+ */
+function ajax_snippets_mcp_keypair_matches_current_host()
+{
+    $stored = (string) get_option(AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH, '');
+    if ($stored === '') {
+        return null;
+    }
+    $current = hash('sha256', strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST)));
+    return $stored === $current;
+}
+
+/**
  * Wipe the keypair and all derived state so a fresh keypair can be generated.
  * Does NOT delete auto-register bookkeeping options — callers that need to
  * reset those (tick, manual snippet) do so themselves.
@@ -50,6 +73,7 @@ function ajax_snippets_mcp_wipe_keypair()
     delete_option(AJAX_SNIPPETS_MCP_OPT_KEYS_VERSION);
     delete_option(AJAX_SNIPPETS_MCP_OPT_KEYS_UPDATED);
     delete_option(AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL);
+    delete_option(AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH);
     update_option(AJAX_SNIPPETS_MCP_OPT_STATUS, 'unregistered', true);
 }
 
@@ -79,6 +103,8 @@ function ajax_snippets_mcp_generate_keypair()
 
     ajax_snippets_mcp_memzero($sk);
     update_option(AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL, home_url('/'), false);
+    $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
+    update_option(AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH, hash('sha256', $host), false);
 
     return ['fp' => $fp, 'pubkey_b64' => base64_encode($pk)];
 }

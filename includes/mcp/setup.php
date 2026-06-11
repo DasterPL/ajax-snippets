@@ -18,9 +18,12 @@ const AJAX_SNIPPETS_MCP_OPT_STATUS        = 'ajax_snippets_mcp_status';
 const AJAX_SNIPPETS_MCP_OPT_ADMIN_KEYS    = 'ajax_snippets_mcp_admin_keys';
 const AJAX_SNIPPETS_MCP_OPT_KEYS_VERSION  = 'ajax_snippets_mcp_admin_keys_version';
 const AJAX_SNIPPETS_MCP_OPT_KEYS_UPDATED  = 'ajax_snippets_mcp_admin_keys_updated';
-const AJAX_SNIPPETS_MCP_OPT_RUN_AS_USER      = 'ajax_snippets_mcp_run_as_user';
-const AJAX_SNIPPETS_MCP_OPT_DB_VERSION       = 'ajax_snippets_mcp_db_version';
-const AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL   = 'ajax_snippets_mcp_registered_home_url';
+const AJAX_SNIPPETS_MCP_OPT_RUN_AS_USER        = 'ajax_snippets_mcp_run_as_user';
+const AJAX_SNIPPETS_MCP_OPT_DB_VERSION         = 'ajax_snippets_mcp_db_version';
+const AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL     = 'ajax_snippets_mcp_registered_home_url';
+// sha256(host) — hex, intentionally not a URL so WP search-replace during
+// staging setup never alters it. Used for domain-change / clone detection.
+const AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH   = 'ajax_snippets_mcp_origin_host_hash';
 
 const AJAX_SNIPPETS_MCP_CRON_HEARTBEAT    = 'ajax_snippets_mcp_heartbeat';
 

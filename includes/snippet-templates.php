@@ -1252,16 +1252,28 @@ if (!$result['sodium_functions']) {
 }
 
 try {
-    // Detect domain change — staging copies cloned from production inherit the
-    // keypair. Without this check manual registration would push the production
-    // public key into the registry under a different URL.
+    // Detect staging clone or domain change before reusing the keypair.
+    // Uses sha256(host) rather than the raw URL so WP search-replace scripts
+    // used during staging setup cannot mask a domain change by rewriting URLs
+    // in option values (hex hashes are never matched by URL substitutions).
+    //
+    // Two rotation triggers:
+    //   false — hash stored but doesn't match current host (domain moved or clone
+    //           detected even after URL replacement)
+    //   null + blocked host — no hash stored + blocked host: auto-register never
+    //           runs on blocked hosts, so any pre-existing keypair must be from a
+    //           clone of a pre-fix install that never stored a hash.
     if (ajax_snippets_mcp_has_keypair()) {
-        $registeredUrl = (string) get_option(AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL, '');
-        if ($registeredUrl !== '' && $registeredUrl !== home_url('/')) {
+        $matches        = ajax_snippets_mcp_keypair_matches_current_host();
+        $cloneOnBlocked = $matches === null && ajax_snippets_mcp_autoregister_is_blocked_host();
+        if ($matches === false || $cloneOnBlocked) {
             ajax_snippets_mcp_wipe_keypair();
             delete_option(AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT);
             delete_option(AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_OPT);
-            $result['steps'][] = 'Domain changed from ' . $registeredUrl . ' — old keypair wiped, generating new one.';
+            $reason = ($matches === false)
+                ? 'Origin-host mismatch (domain changed or staging clone after URL replacement)'
+                : 'Blocked host with inherited keypair (staging clone detected)';
+            $result['steps'][] = $reason . ' — old keypair wiped, generating new one.';
         }
     }
     if (!ajax_snippets_mcp_has_keypair()) {

@@ -15,6 +15,26 @@ function ajax_snippets_mcp_heartbeat_tick()
         return;
     }
 
+    // Guard: don't touch the registry if this install's keypair belongs to a
+    // different host — avoids a staging clone silently updating the source site's
+    // last_seen or URL in the registry.
+    if (ajax_snippets_mcp_has_keypair()) {
+        $matches = ajax_snippets_mcp_keypair_matches_current_host();
+        if ($matches === false) {
+            // Domain mismatch — auto-register tick will handle rotation; skip heartbeat.
+            return;
+        }
+        // No hash stored + blocked host: never registered here (clone of pre-fix install).
+        if ($matches === null && ajax_snippets_mcp_autoregister_is_blocked_host()) {
+            return;
+        }
+        // No hash stored + non-blocked host: pre-fix migration — backfill hash and proceed.
+        if ($matches === null) {
+            $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
+            update_option(AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH, hash('sha256', $host), false);
+        }
+    }
+
     try {
         ajax_snippets_mcp_registry_self_register(false);
     } catch (Ajax_Snippets_Mcp_Registry_Error $e) {

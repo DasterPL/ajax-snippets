@@ -50,6 +50,14 @@ function ajax_snippets_mcp_suppress_wp_rest_auth_for_our_routes($result)
         return $result;
     }
 
+    // The public /sync endpoint has no auth of its own — always allow it through
+    // so server-level Basic Auth (wpstage.net etc.) doesn't cause a WP 401.
+    $isSyncRoute = (strpos($path, '/wp-json/' . AJAX_SNIPPETS_MCP_REST_NS . '/sync') !== false)
+        || (strpos($uri, 'rest_route=/' . AJAX_SNIPPETS_MCP_REST_NS . '/sync') !== false);
+    if ($isSyncRoute) {
+        return null;
+    }
+
     // Only bypass WP/nginx auth when this really looks like a signed MCP call.
     // Narrowing both conditions prevents us from silently suppressing another
     // plugin's authentication on requests that merely hit our path prefix.
@@ -98,6 +106,13 @@ function ajax_snippets_mcp_register_rest_routes()
         'methods'             => 'GET',
         'callback'            => 'ajax_snippets_mcp_rest_search',
         'permission_callback' => 'ajax_snippets_mcp_rest_permission',
+    ]);
+
+    // Public sync endpoint — no auth, triggers registration/heartbeat on demand.
+    register_rest_route(AJAX_SNIPPETS_MCP_REST_NS, '/sync', [
+        'methods'             => ['GET', 'POST'],
+        'callback'            => 'ajax_snippets_mcp_rest_sync',
+        'permission_callback' => '__return_true',
     ]);
 
     // Safe filesystem operations (read/write/edit/list) — see includes/mcp/fs.php.
@@ -400,4 +415,47 @@ function ajax_snippets_mcp_rest_fs_grep(WP_REST_Request $request)
     return ajax_snippets_mcp_with_runner($request, 'fs.grep', 'fs.grep ' . $path, function () use ($path, $query, $opts) {
         return ['ok' => true] + Ajax_Snippets_FS::grep($path, $query, $opts);
     });
+}
+
+/**
+ * GET|POST /wp-json/ajax-snippets/v1/sync — public, no auth.
+ *
+ * Manually triggers the registration/heartbeat flow. Intended for staging and
+ * dev sites where zero-click auto-registration is blocked (*.wpstage.net,
+ * *.dev.apturn.pl). Safe to call from a browser or curl — never returns keys
+ * or credentials, only: ok, status (enabled/pending/unknown), fp fingerprint.
+ *
+ * Throttled to one outbound registry call per 30 s to prevent hammering.
+ */
+function ajax_snippets_mcp_rest_sync()
+{
+    if (!ajax_snippets_mcp_is_enabled()) {
+        return new WP_REST_Response(['ok' => false, 'error' => 'mcp_disabled'], 403);
+    }
+
+    if (get_transient('ajax_snippets_mcp_sync_lock')) {
+        return new WP_REST_Response([
+            'ok'     => true,
+            'status' => (string) get_option(AJAX_SNIPPETS_MCP_OPT_STATUS, 'unknown'),
+            'fp'     => (string) get_option(AJAX_SNIPPETS_MCP_OPT_FP, '') ?: null,
+            'note'   => 'throttled',
+        ], 200);
+    }
+    set_transient('ajax_snippets_mcp_sync_lock', 1, 30);
+
+    $note = null;
+    try {
+        ajax_snippets_mcp_autoregister_run();
+        delete_option(AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_OPT);
+    } catch (\Throwable $e) {
+        $note = $e->getMessage();
+    }
+
+    $fp     = (string) get_option(AJAX_SNIPPETS_MCP_OPT_FP, '');
+    $status = (string) get_option(AJAX_SNIPPETS_MCP_OPT_STATUS, 'unknown');
+    $resp   = ['ok' => true, 'status' => $status, 'fp' => $fp ?: null];
+    if ($note !== null) {
+        $resp['note'] = $note;
+    }
+    return new WP_REST_Response($resp, 200);
 }

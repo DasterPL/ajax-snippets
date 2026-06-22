@@ -110,7 +110,22 @@ function ajax_snippets_mcp_autoregister_run()
 {
     // 1) Make sure we have an Ed25519 keypair.
     if (!ajax_snippets_mcp_has_keypair()) {
-        ajax_snippets_mcp_generate_keypair();
+        // Double-check directly from DB, bypassing the WP object-cache layer.
+        // On environments with read replicas or a persistent cache that lags
+        // behind recent primary writes, get_option() may return stale empty
+        // data while another server already wrote the keypair. Reading $wpdb
+        // directly uses the same connection but skips any in-process cache,
+        // guarding against the most common case (per-process stale cache).
+        global $wpdb;
+        wp_cache_delete(AJAX_SNIPPETS_MCP_OPT_SECRET_KEY, 'options');
+        $inDb = (string) $wpdb->get_var($wpdb->prepare(
+            "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+            AJAX_SNIPPETS_MCP_OPT_SECRET_KEY
+        ));
+        if ($inDb === '') {
+            ajax_snippets_mcp_generate_keypair();
+        }
+        // else: key exists in DB but wasn't in cache — proceed with existing key
     }
 
     // 2) Register with the registry (or heartbeat if already known).

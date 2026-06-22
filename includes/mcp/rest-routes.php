@@ -446,6 +446,7 @@ function ajax_snippets_mcp_rest_sync()
     $note = null;
     try {
         ajax_snippets_mcp_autoregister_run();
+        update_option(AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT, time(), true);
         delete_option(AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_OPT);
     } catch (\Throwable $e) {
         $note = $e->getMessage();

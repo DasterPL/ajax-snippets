@@ -58,11 +58,10 @@ if (!class_exists('Ajax_Snippets_FS')) {
         const GREP_SKIP_DIRS = ['node_modules', '.git', 'ajax-snippets-fs-backups'];
 
         /**
-         * WRITE roots (each passed through realpath). Writes/edits are confined
-         * to the wp-content tree: themes, plugins, mu-plugins, uploads, cache,
-         * languages, upgrade and any custom subdirectories. wp-config.php and the
-         * WordPress core (in ABSPATH, one level up) are NOT writable — a botched
-         * write there is a footgun, and editing them is left to execute_snippet.
+         * WRITE roots (each passed through realpath). Writes/edits are allowed
+         * anywhere inside the WordPress install (ABSPATH) — including wp-config.php
+         * and core files. The read-scope and write-scope are intentionally symmetric;
+         * the lint+backup+canary pipeline already guards against bad writes.
          *
          * @return list<string> canonical root paths (no trailing separator)
          */
@@ -70,6 +69,9 @@ if (!class_exists('Ajax_Snippets_FS')) {
         {
             $roots = [];
 
+            if (defined('ABSPATH')) {
+                $roots[] = ABSPATH;
+            }
             if (defined('WP_CONTENT_DIR')) {
                 $roots[] = WP_CONTENT_DIR;
             }
@@ -254,12 +256,6 @@ if (!class_exists('Ajax_Snippets_FS')) {
                 if (strncmp($canonical, $prefix, strlen($prefix)) === 0) {
                     return;
                 }
-            }
-            if ($for_write) {
-                throw new \RuntimeException(
-                    'Path is outside wp-content; writes to wp-config.php / WordPress core are not allowed '
-                    . '(use execute_snippet for those): ' . $canonical
-                );
             }
             throw new \RuntimeException(
                 'Path is outside the WordPress install (ABSPATH): ' . $canonical

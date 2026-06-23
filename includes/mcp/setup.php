@@ -133,7 +133,13 @@ function ajax_snippets_mcp_on_deactivate()
     // doesn't lose history. Uninstall is the place to drop them.
 }
 
-register_activation_hook(AJAX_SNIPPETS_PLUGIN, 'ajax_snippets_mcp_on_activate');
-register_deactivation_hook(AJAX_SNIPPETS_PLUGIN, 'ajax_snippets_mcp_on_deactivate');
+// AJAX_SNIPPETS_PLUGIN is defined only in the main plugin file, which WordPress
+// does NOT load during uninstall (uninstall.php requires this file directly).
+// Referencing an undefined constant is a fatal Error on PHP 8+, which would
+// abort the delete. Guard so this file is safe to include in any context.
+if (defined('AJAX_SNIPPETS_PLUGIN')) {
+    register_activation_hook(AJAX_SNIPPETS_PLUGIN, 'ajax_snippets_mcp_on_activate');
+    register_deactivation_hook(AJAX_SNIPPETS_PLUGIN, 'ajax_snippets_mcp_on_deactivate');
+}
 
 add_action('plugins_loaded', 'ajax_snippets_mcp_maybe_upgrade_schema');

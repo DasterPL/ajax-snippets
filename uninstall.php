@@ -56,6 +56,8 @@ $options_to_delete = [
     AJAX_SNIPPETS_MCP_OPT_KEYS_UPDATED,
     AJAX_SNIPPETS_MCP_OPT_RUN_AS_USER,
     AJAX_SNIPPETS_MCP_OPT_DB_VERSION,
+    AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL,
+    AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH,
     'ajax_snippets_mcp_autoregister_done',
     'ajax_snippets_mcp_autoregister_backoff_until',
 ];

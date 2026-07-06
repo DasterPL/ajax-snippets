@@ -4,7 +4,7 @@ Quickly run and test PHP snippets in the WordPress admin, with a batch mode for 
 
 ## Requirements
 
-- WordPress >= 4.9
+- WordPress >= 6.6
 - PHP >= 7.0
 
 ## Installation

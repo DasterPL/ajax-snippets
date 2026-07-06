@@ -3,9 +3,10 @@
 defined('ABSPATH') || exit;
 
 /**
- * WP-cron daily heartbeat: touches `last_seen` in the registry, refreshes admin
- * pubkey cache, garbage-collects local nonces and old audit entries, retries
- * any audit entries that failed to push synchronously.
+ * WP-cron hourly heartbeat: touches `last_seen` in the registry, refreshes admin
+ * pubkey cache (so revoked admin keys stop being honoured within ~1h), garbage-
+ * collects local nonces and old audit entries, retries any audit entries that
+ * failed to push synchronously.
  */
 add_action(AJAX_SNIPPETS_MCP_CRON_HEARTBEAT, 'ajax_snippets_mcp_heartbeat_tick');
 

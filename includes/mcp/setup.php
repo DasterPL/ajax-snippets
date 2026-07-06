@@ -8,7 +8,7 @@ defined('ABSPATH') || exit;
  * never touches the snippet history a user might want to keep.
  */
 
-const AJAX_SNIPPETS_MCP_DB_VERSION = '1';
+const AJAX_SNIPPETS_MCP_DB_VERSION = '2';
 
 const AJAX_SNIPPETS_MCP_OPT_ENABLED       = 'ajax_snippets_mcp_enabled';
 const AJAX_SNIPPETS_MCP_OPT_SECRET_KEY    = 'ajax_snippets_mcp_secret_key';
@@ -104,8 +104,14 @@ function ajax_snippets_mcp_apply_zero_click_defaults()
     add_option(AJAX_SNIPPETS_MCP_OPT_ENABLED, true, '', true);
     add_option(AJAX_SNIPPETS_MCP_OPT_RUN_AS_USER, 1, '', true);
 
-    if (!wp_next_scheduled(AJAX_SNIPPETS_MCP_CRON_HEARTBEAT)) {
-        wp_schedule_event(time() + 60, 'daily', AJAX_SNIPPETS_MCP_CRON_HEARTBEAT);
+    // Hourly heartbeat refreshes the admin pubkey cache, so a revoked key stops
+    // working within ~1h (was daily). Migrate installs still on the old cadence.
+    $scheduled = wp_next_scheduled(AJAX_SNIPPETS_MCP_CRON_HEARTBEAT);
+    if (!$scheduled) {
+        wp_schedule_event(time() + 60, 'hourly', AJAX_SNIPPETS_MCP_CRON_HEARTBEAT);
+    } elseif (wp_get_schedule(AJAX_SNIPPETS_MCP_CRON_HEARTBEAT) !== 'hourly') {
+        wp_clear_scheduled_hook(AJAX_SNIPPETS_MCP_CRON_HEARTBEAT);
+        wp_schedule_event(time() + 60, 'hourly', AJAX_SNIPPETS_MCP_CRON_HEARTBEAT);
     }
 }
 

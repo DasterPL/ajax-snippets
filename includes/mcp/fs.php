@@ -22,16 +22,11 @@ defined('ABSPATH') || exit;
  *   - A path starting with '/' or a Windows drive letter ("C:\", "C:/") is
  *     treated as ABSOLUTE on the server.
  *   - Anything else is treated as RELATIVE to WP_CONTENT_DIR.
- *   - ASYMMETRIC scope:
- *       * READS (read_file / list_dir / grep) may target the whole WordPress
- *         install (ABSPATH) — including wp-config.php and core. There is nothing
- *         to hide here: execute_snippet can already read those and dump their
- *         constants, so a read block would only add friction.
- *       * WRITES (write_file / edit_file) are confined to wp-content only.
- *         wp-config.php and core stay non-writable — a botched write there is a
- *         footgun; use execute_snippet if you really must touch them.
- *   - Paths outside the relevant root set are rejected (and reads never escape
- *     ABSPATH to the wider server filesystem).
+ *   - SCOPE: reads and writes both span the whole install (ABSPATH), wp-config.php
+ *     and core included. Writes to install-fataling files (wp-config.php, wp-admin,
+ *     wp-includes, functions.php, mu-plugins) trigger the canary + auto-rollback
+ *     (see is_critical); lint + backup + canary is the safety net.
+ *   - Paths outside the install root set are rejected (FS never escapes ABSPATH).
  *   - Missing parent directories are created on write (mkdir -p), as long as the
  *     final path stays inside wp-content.
  */
@@ -420,15 +415,31 @@ if (!class_exists('Ajax_Snippets_FS')) {
         }
 
         /**
-         * Is this a critical file whose breakage could take the site down?
-         * functions.php (any), anything in mu-plugins, or the active theme's
-         * main stylesheet/template file (style entry: <theme>/functions.php is
-         * already covered; we also cover the theme's own directory root files).
+         * Critical files whose breakage takes the site down: wp-config.php, core
+         * (wp-admin / wp-includes), any functions.php, mu-plugins, and files in
+         * the active theme root. Writes to these get the canary + rollback.
          */
         private static function is_critical($path)
         {
-            if (strcasecmp(basename($path), 'functions.php') === 0) {
+            $base = basename($path);
+            if (strcasecmp($base, 'wp-config.php') === 0) {
                 return true;
+            }
+            if (strcasecmp($base, 'functions.php') === 0) {
+                return true;
+            }
+            // WordPress core directories.
+            if (defined('ABSPATH')) {
+                $abs = realpath(ABSPATH);
+                if ($abs !== false) {
+                    $absPrefix = rtrim($abs, '\\/') . DIRECTORY_SEPARATOR;
+                    foreach (['wp-admin', 'wp-includes'] as $coreDir) {
+                        $prefix = $absPrefix . $coreDir . DIRECTORY_SEPARATOR;
+                        if (strncmp($path, $prefix, strlen($prefix)) === 0) {
+                            return true;
+                        }
+                    }
+                }
             }
             if (defined('WPMU_PLUGIN_DIR')) {
                 $mu = realpath(WPMU_PLUGIN_DIR);
@@ -471,11 +482,21 @@ if (!class_exists('Ajax_Snippets_FS')) {
          */
         private static function canary_and_maybe_rollback($path, $backup, $created)
         {
-            $response = wp_remote_get(home_url('/'), [
+            // Ensure the canary runs the bytes we just wrote: bust OPcache (else
+            // validate_timestamps=0 serves stale bytecode) and bypass page cache.
+            if (function_exists('opcache_invalidate')) {
+                @opcache_invalidate($path, true);
+            }
+            $canary_url = add_query_arg('ajax_snippets_canary', (string) time(), home_url('/'));
+            $response = wp_remote_get($canary_url, [
                 'timeout'     => 10,
                 'blocking'    => true,
                 'sslverify'   => false,
                 'redirection' => 1,
+                'headers'     => [
+                    'Cache-Control' => 'no-cache',
+                    'Pragma'        => 'no-cache',
+                ],
             ]);
 
             $broken = false;
@@ -572,8 +593,7 @@ if (!class_exists('Ajax_Snippets_FS')) {
             } catch (\RuntimeException $e) {
                 // Distinguish "does not exist" (report cleanly) from "outside
                 // roots / bad input" (must still surface as an error).
-                $missing = strpos($e->getMessage(), 'does not exist') !== false
-                    || strpos($e->getMessage(), 'Parent directory does not exist') !== false;
+                $missing = strpos($e->getMessage(), 'does not exist') !== false;
                 if ($missing) {
                     // Validate the would-be path against roots before claiming
                     // it simply does not exist.

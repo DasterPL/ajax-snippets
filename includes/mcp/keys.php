@@ -162,53 +162,14 @@ function ajax_snippets_mcp_sign_request($method, $path, $body)
  * Verify a signed incoming request against the cached admin pubkey list.
  * Returns the matched admin entry (with fp, label) on success, throws on failure.
  *
- * Thin adapter over ajax_snippets_mcp_verify_signed() that pulls the canonical
- * inputs out of a WP_REST_Request. The route string it signs over is
- * get_route() (e.g. /ajax-snippets/v1/execute).
- *
  * @throws \RuntimeException
  */
 function ajax_snippets_mcp_verify_admin_request(WP_REST_Request $request)
 {
-    return ajax_snippets_mcp_verify_signed(
-        (string) $request->get_method(),
-        (string) $request->get_route(),
-        [
-            'fp'        => (string) $request->get_header('x_auth_fp'),
-            'timestamp' => (string) $request->get_header('x_auth_timestamp'),
-            'nonce'     => (string) $request->get_header('x_auth_nonce'),
-            'signature' => (string) $request->get_header('x_auth_signature'),
-        ],
-        (string) $request->get_body()
-    );
-}
-
-/**
- * Core signed-request verification, decoupled from WP_REST_Request.
- *
- * Reused by the standalone rescue endpoint (rescue.php), which runs outside the
- * REST stack and therefore cannot build a WP_REST_Request. The canonical
- * payload is `method\npath\ntimestamp\nnonce_b64\nsha256_hex(body)` — identical
- * to bridge/src/crypto.ts:signRequest. `$path` is whatever both sides agreed to
- * sign over (the REST route for REST calls, a fixed token for rescue).
- *
- * Enforces: header presence, fp/ts shape, clock skew, nonce + signature
- * decoding, admin-key lookup, Ed25519 verification, and single-use nonce
- * (replay protection). Fails closed on every branch.
- *
- * @param string $method  HTTP method, e.g. "POST"
- * @param string $path    canonical signed path
- * @param array{fp:string,timestamp:string,nonce:string,signature:string} $headers
- * @param string $body    raw request body
- * @return array{fp:string,pubkey:string,label:?string} matched admin entry
- * @throws \RuntimeException
- */
-function ajax_snippets_mcp_verify_signed($method, $path, array $headers, $body)
-{
-    $fp       = (string) ($headers['fp'] ?? '');
-    $ts       = (string) ($headers['timestamp'] ?? '');
-    $nonceB64 = (string) ($headers['nonce'] ?? '');
-    $sigB64   = (string) ($headers['signature'] ?? '');
+    $fp        = (string) $request->get_header('x_auth_fp');
+    $ts        = (string) $request->get_header('x_auth_timestamp');
+    $nonceB64  = (string) $request->get_header('x_auth_nonce');
+    $sigB64    = (string) $request->get_header('x_auth_signature');
 
     if ($fp === '' || $ts === '' || $nonceB64 === '' || $sigB64 === '') {
         throw new \RuntimeException('Missing X-Auth-* header.');
@@ -243,8 +204,9 @@ function ajax_snippets_mcp_verify_signed($method, $path, array $headers, $body)
         throw new \RuntimeException('Cached admin pubkey is corrupt.');
     }
 
-    $bodyHash = hash('sha256', (string) $body);
-    $payload  = $method . "\n" . $path . "\n" . $ts . "\n" . $nonceB64 . "\n" . $bodyHash;
+    $bodyHash = hash('sha256', (string) $request->get_body());
+    $payload  = $request->get_method() . "\n" . $request->get_route() . "\n"
+              . $ts . "\n" . $nonceB64 . "\n" . $bodyHash;
 
     if (!sodium_crypto_sign_verify_detached($sig, $payload, $pubkey)) {
         throw new \RuntimeException('Signature does not verify.');

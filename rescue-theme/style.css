@@ -1,0 +1,8 @@
+/*
+Theme Name: AJAX Snippets Rescue
+Description: Minimal placeholder theme loaded ONLY by the AJAX Snippets rescue endpoint (rescue.php) to keep a fataling active theme out of the WordPress bootstrap. It has no templates and is never meant to render the front end. Do not activate it manually.
+Version: 1.0
+Requires at least: 6.6
+Requires PHP: 7.0
+Author: Apturn
+*/

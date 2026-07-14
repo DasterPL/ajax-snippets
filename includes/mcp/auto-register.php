@@ -48,6 +48,28 @@ function ajax_snippets_mcp_autoregister_is_blocked_host()
     return false;
 }
 
+/**
+ * If the keypair was generated on a different host, wipe it so a fresh identity
+ * is generated on the next registration. A clone/staging copy inherits the
+ * source site's keypair + origin-host hash (sha256(host), untouched by URL
+ * search-replace), so without this it would register under the source site's fp
+ * and clobber its registry row. Shared by the admin_init tick and the /sync
+ * path so both enroll a clone under its own fp. Returns true if it reset.
+ */
+function ajax_snippets_mcp_reset_keypair_if_host_changed()
+{
+    if (!ajax_snippets_mcp_has_keypair()
+        || ajax_snippets_mcp_keypair_matches_current_host() !== false) {
+        return false;
+    }
+    $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
+    error_log('[ajax-snippets-mcp] Keypair origin-host mismatch (' . $host . ') — regenerating keypair and re-registering.');
+    ajax_snippets_mcp_wipe_keypair();
+    delete_option(AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT);
+    delete_option(AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_OPT);
+    return true;
+}
+
 add_action('admin_init', 'ajax_snippets_mcp_autoregister_tick', 20);
 
 function ajax_snippets_mcp_autoregister_tick()
@@ -66,18 +88,10 @@ function ajax_snippets_mcp_autoregister_tick()
         $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
         update_option(AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH, hash('sha256', $host), false);
     }
-    // Before checking AUTOREG_DONE: detect domain change caused by cloning this
-    // install to a new host. A cloned site inherits the keypair *and* AUTOREG_DONE,
-    // so without this check the tick would skip re-registration and the old keypair
-    // would never be rotated. Uses sha256(host) — not the raw URL — so staging
-    // search-replace scripts cannot mask the mismatch by rewriting option values.
-    if (ajax_snippets_mcp_has_keypair() && ajax_snippets_mcp_keypair_matches_current_host() === false) {
-        $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
-        error_log('[ajax-snippets-mcp] Keypair origin-host mismatch (' . $host . ') — regenerating keypair and re-registering.');
-        ajax_snippets_mcp_wipe_keypair();
-        delete_option(AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT);
-        delete_option(AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_OPT);
-    }
+    // Before checking AUTOREG_DONE: detect a clone/domain change (a cloned site
+    // inherits the keypair *and* AUTOREG_DONE) and regenerate, so the tick doesn't
+    // skip re-registration under a stale keypair.
+    ajax_snippets_mcp_reset_keypair_if_host_changed();
     if (get_option(AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT)) {
         return;
     }
@@ -108,6 +122,13 @@ function ajax_snippets_mcp_autoregister_tick()
 
 function ajax_snippets_mcp_autoregister_run()
 {
+    // 0) Clone/host-change guard. The admin_init tick already does this, but the
+    //    public /sync endpoint calls run() directly (that's how a blocked staging
+    //    host is enrolled), so it must regenerate a clone's inherited keypair here
+    //    too — otherwise the staging registers under the source site's fp and
+    //    overwrites its registry row.
+    ajax_snippets_mcp_reset_keypair_if_host_changed();
+
     // 1) Make sure we have an Ed25519 keypair.
     if (!ajax_snippets_mcp_has_keypair()) {
         // Double-check directly from DB, bypassing the WP object-cache layer.

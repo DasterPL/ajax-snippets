@@ -772,7 +772,8 @@ if (!class_exists('Ajax_Snippets_FS')) {
          * are skipped. Hard-capped on results and files scanned so the response
          * stays bounded — `truncated` signals a cap was hit.
          *
-         * @param string $path  Directory to search (within roots).
+         * @param string $path  Directory OR single file to search (within roots).
+         *                      Empty => the whole install from ABSPATH (site root).
          * @param string $query Search string (literal) or PCRE body (regex mode).
          * @param array{regex?:bool,ignore_case?:bool,glob?:string,max_results?:int} $opts
          * @return array{path:string,matches:list<array{file:string,line:int,text:string}>,files_scanned:int,truncated:bool}
@@ -792,9 +793,19 @@ if (!class_exists('Ajax_Snippets_FS')) {
                 ? min(self::GREP_MAX_RESULTS, (int) $opts['max_results'])
                 : self::GREP_MAX_RESULTS;
 
+            // Empty path => search the whole install from the site root (ABSPATH).
+            if (trim((string) $path) === '') {
+                $path = ABSPATH;
+            }
+
             $root = self::resolve_path($path, true);
-            if (!is_dir($root)) {
-                throw new \RuntimeException('Not a directory: ' . $root);
+
+            // Accept a single file as well as a directory: if $root is a file we
+            // grep just that file (matches `grep` CLI semantics), so callers can
+            // point search_files straight at e.g. themes/foo/functions.php.
+            $isFile = is_file($root);
+            if (!$isFile && !is_dir($root)) {
+                throw new \RuntimeException('Not a directory or file: ' . $root);
             }
 
             // Build + validate the regex up front so PCRE warnings can't leak and
@@ -808,18 +819,26 @@ if (!class_exists('Ajax_Snippets_FS')) {
             }
 
             $skipDirs = self::GREP_SKIP_DIRS;
-            $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveCallbackFilterIterator(
-                    new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS),
-                    static function ($current) use ($skipDirs) {
-                        if ($current->isDir()) {
-                            return !in_array($current->getFilename(), $skipDirs, true);
+            if ($isFile) {
+                $iterator = new \ArrayIterator([new \SplFileInfo($root)]);
+            } else {
+                $iterator = new \RecursiveIteratorIterator(
+                    new \RecursiveCallbackFilterIterator(
+                        new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS),
+                        static function ($current) use ($skipDirs) {
+                            if ($current->isDir()) {
+                                return !in_array($current->getFilename(), $skipDirs, true);
+                            }
+                            return true;
                         }
-                        return true;
-                    }
-                ),
-                \RecursiveIteratorIterator::LEAVES_ONLY
-            );
+                    ),
+                    \RecursiveIteratorIterator::LEAVES_ONLY
+                );
+            }
+
+            // Report matches relative to the directory searched; for a single file
+            // that's its parent dir, so the match shows just the file name.
+            $displayBase = $isFile ? dirname($root) : $root;
 
             $matches      = [];
             $filesScanned = 0;
@@ -869,7 +888,7 @@ if (!class_exists('Ajax_Snippets_FS')) {
                         $text = substr($text, 0, self::GREP_LINE_CAP) . '…';
                     }
                     $matches[] = [
-                        'file' => self::relpath($root, $full),
+                        'file' => self::relpath($displayBase, $full),
                         'line' => $lineNo,
                         'text' => $text,
                     ];

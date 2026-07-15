@@ -398,10 +398,8 @@ function ajax_snippets_mcp_rest_fs_edit(WP_REST_Request $request)
 function ajax_snippets_mcp_rest_fs_grep(WP_REST_Request $request)
 {
     $body = $request->get_json_params();
-    $path = is_array($body) && isset($body['path']) ? (string) $body['path'] : '';
-    if ($path === '') {
-        return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'Empty path']], 422);
-    }
+    // Empty path is allowed: grep() treats it as "whole site root" (ABSPATH).
+    $path  = is_array($body) && isset($body['path']) ? (string) $body['path'] : '';
     $query = is_array($body) && isset($body['query']) ? (string) $body['query'] : '';
     if ($query === '') {
         return new WP_REST_Response(['ok' => false, 'error' => ['message' => 'Empty query']], 422);
@@ -412,7 +410,8 @@ function ajax_snippets_mcp_rest_fs_grep(WP_REST_Request $request)
         'glob'        => isset($body['glob']) ? (string) $body['glob'] : '',
         'max_results' => isset($body['max_results']) ? (int) $body['max_results'] : 0,
     ];
-    return ajax_snippets_mcp_with_runner($request, 'fs.grep', 'fs.grep ' . $path, function () use ($path, $query, $opts) {
+    $auditPath = $path === '' ? '(site root)' : $path;
+    return ajax_snippets_mcp_with_runner($request, 'fs.grep', 'fs.grep ' . $auditPath, function () use ($path, $query, $opts) {
         return ['ok' => true] + Ajax_Snippets_FS::grep($path, $query, $opts);
     });
 }

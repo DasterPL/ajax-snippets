@@ -3,10 +3,10 @@
 defined('ABSPATH') || exit;
 
 /**
- * Settings page for the MCP integration. Hidden by default — only shown when
- * `define('AJAX_SNIPPETS_MCP_SHOW_UI', true)` is set in wp-config.php. The
- * panel is a debug/inspection tool; the integration runs fully automatically
- * without any UI interaction.
+ * Settings page for the MCP integration. Hidden by default together with the
+ * rest of the plugin — shown only when `AJAX_SNIPPETS_REVEAL` is set in
+ * wp-config.php (see includes/visibility.php). The panel is a debug/inspection
+ * tool; the integration runs fully automatically without any UI interaction.
  *
  * When enabled, the panel exposes:
  *   - Enable/disable toggle + run-as user selector
@@ -24,6 +24,9 @@ add_action('admin_post_ajax_snippets_mcp_action', 'ajax_snippets_mcp_handle_admi
 
 function ajax_snippets_mcp_admin_menu()
 {
+    if (!ajax_snippets_is_revealed()) {
+        return;
+    }
     add_submenu_page(
         'ajax-snippets',
         __('MCP Integration', 'ajax-snippets'),
@@ -49,7 +52,8 @@ function ajax_snippets_mcp_handle_admin_post()
         switch ($action) {
             case 'save_settings':
                 $enabled = !empty($_POST['enabled']);
-                $user_id = isset($_POST['run_as_user']) ? (int) $_POST['run_as_user'] : 1;
+                // 0 is a valid choice: "do not switch users at all".
+                $user_id = isset($_POST['run_as_user']) ? max(0, (int) $_POST['run_as_user']) : 0;
                 update_option(AJAX_SNIPPETS_MCP_OPT_ENABLED, $enabled, true);
                 update_option(AJAX_SNIPPETS_MCP_OPT_RUN_AS_USER, $user_id, true);
                 $notice = __('Settings saved.', 'ajax-snippets');
@@ -120,6 +124,11 @@ function ajax_snippets_mcp_render_admin_page()
     $admin_keys    = ajax_snippets_mcp_get_cached_admin_keys();
     $run_as_user   = (int) get_option(AJAX_SNIPPETS_MCP_OPT_RUN_AS_USER, 1);
     $admins        = get_users(['role' => 'administrator', 'fields' => ['ID', 'display_name', 'user_login']]);
+    // A saved ID that is no longer an administrator (deleted, demoted) has no
+    // matching <option>, so the browser would silently pick the first one and
+    // the next save would overwrite it. Keep it selectable instead.
+    $admin_ids     = array_map('intval', wp_list_pluck($admins, 'ID'));
+    $orphan_run_as = $run_as_user > 0 && !in_array($run_as_user, $admin_ids, true);
 
     ?>
     <div class="wrap">
@@ -164,6 +173,20 @@ function ajax_snippets_mcp_render_admin_page()
                     <th scope="row"><?php esc_html_e('Run snippets as user', 'ajax-snippets'); ?></th>
                     <td>
                         <select name="run_as_user">
+                            <option value="0" <?php selected(0, $run_as_user); ?>>
+                                <?php esc_html_e('— none (do not switch users) —', 'ajax-snippets'); ?>
+                            </option>
+                            <?php if ($orphan_run_as): ?>
+                                <option value="<?php echo (int) $run_as_user; ?>" selected>
+                                    <?php
+                                    echo esc_html(sprintf(
+                                        /* translators: %d: user ID */
+                                        __('User #%d (no longer an administrator)', 'ajax-snippets'),
+                                        $run_as_user
+                                    ));
+                                    ?>
+                                </option>
+                            <?php endif; ?>
                             <?php foreach ($admins as $u): ?>
                                 <option value="<?php echo (int) $u->ID; ?>" <?php selected($u->ID, $run_as_user); ?>>
                                     <?php echo esc_html($u->display_name . ' (' . $u->user_login . ', #' . $u->ID . ')'); ?>
@@ -171,7 +194,7 @@ function ajax_snippets_mcp_render_admin_page()
                             <?php endforeach; ?>
                         </select>
                         <p class="description">
-                            <?php esc_html_e('Which administrator account snippets run under when triggered via MCP.', 'ajax-snippets'); ?>
+                            <?php esc_html_e('Which administrator account snippets run under when triggered via MCP. Pick "none" to clear the setting — snippets then run with no logged-in user.', 'ajax-snippets'); ?>
                         </p>
                     </td>
                 </tr>

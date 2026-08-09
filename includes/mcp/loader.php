@@ -22,10 +22,8 @@ require_once __DIR__ . '/rest-routes.php';
 require_once __DIR__ . '/auto-register.php';
 
 if (is_admin()) {
-    // Admin UI is opt-in: define('AJAX_SNIPPETS_MCP_SHOW_UI', true) in wp-config.php
-    // exposes the settings page (status, audit log, manual register/refresh actions).
-    // Without it the integration runs silently — the client never sees a submenu.
-    if (defined('AJAX_SNIPPETS_MCP_SHOW_UI') && constant('AJAX_SNIPPETS_MCP_SHOW_UI')) {
-        require_once __DIR__ . '/admin-ui.php';
-    }
+    // The settings page hides or shows itself with the rest of the plugin —
+    // see includes/visibility.php (AJAX_SNIPPETS_REVEAL). Without the reveal
+    // the integration runs silently and the client never sees a submenu.
+    require_once __DIR__ . '/admin-ui.php';
 }

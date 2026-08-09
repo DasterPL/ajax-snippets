@@ -3,6 +3,10 @@
 defined('ABSPATH') || exit;
 
 add_action('admin_menu', function () {
+    // Hidden by default — see includes/visibility.php (AJAX_SNIPPETS_REVEAL).
+    if (!ajax_snippets_is_revealed()) {
+        return;
+    }
     add_menu_page(
         __('Ajax Snippets', 'ajax-snippets'),
         __('Ajax Snippets', 'ajax-snippets'),

@@ -14,15 +14,14 @@ Quickly run and test PHP snippets in the WordPress admin, with a batch mode for 
 
 ## GitHub updates
 
-The plugin uses `plugin-update-checker`. While hidden (see below) the update is
-filtered out of wp-admin, so it can only be installed by cron auto-updates or
-`wp plugin update ajax-snippets` — both run outside the admin and still see it.
+The plugin uses `plugin-update-checker`. Hiding (see below) does not touch
+updates: a new release still shows on Dashboard → Updates and installs normally.
 
 ## Visibility
 
-The plugin is hidden by default: no admin menu, no row on the Plugins screen and
-no entry on Dashboard → Updates. It keeps running (AJAX, MCP, cron) — it is only
-invisible in wp-admin. Reveal it with `AJAX_SNIPPETS_REVEAL` in `wp-config.php`:
+The plugin is hidden by default: no admin menu and no row on the Plugins screen.
+It keeps running (AJAX, MCP, cron) — it is only invisible in wp-admin. Reveal it
+with `AJAX_SNIPPETS_REVEAL` in `wp-config.php`:
 
 ```php
 define('AJAX_SNIPPETS_REVEAL', true);   // visible to everyone who can see it

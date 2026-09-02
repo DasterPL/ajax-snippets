@@ -1,3 +1,4 @@
+<?php defined('ABSPATH') || exit; ?>
 <div class="wrap">
     <h1>
         <?php echo esc_html(get_admin_page_title()); ?>
@@ -89,5 +90,5 @@
             </details>
         </div>
     </div>
-    <div class="snippet_footer"><?php echo esc_html(sprintf(__('Ajax-Snippets Version: %s', 'ajax-snippets'), AJAX_SNIPPETS_VERSION)); ?></div>
+    <div class="snippet_footer"><?php echo esc_html(sprintf(/* translators: %s: plugin version */ __('Ajax-Snippets Version: %s', 'ajax-snippets'), AJAX_SNIPPETS_VERSION)); ?></div>
 </div>

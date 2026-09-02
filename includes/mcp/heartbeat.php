@@ -39,13 +39,13 @@ function ajax_snippets_mcp_heartbeat_tick()
     try {
         ajax_snippets_mcp_registry_self_register(false);
     } catch (Ajax_Snippets_Mcp_Registry_Error $e) {
-        error_log('[ajax-snippets-mcp] heartbeat self_register failed: ' . $e->getMessage());
+        ajax_snippets_mcp_debug_log('[ajax-snippets-mcp] heartbeat self_register failed: ' . $e->getMessage());
     }
 
     try {
         ajax_snippets_mcp_registry_refresh_admin_keys(true);
     } catch (Ajax_Snippets_Mcp_Registry_Error $e) {
-        error_log('[ajax-snippets-mcp] heartbeat key refresh failed: ' . $e->getMessage());
+        ajax_snippets_mcp_debug_log('[ajax-snippets-mcp] heartbeat key refresh failed: ' . $e->getMessage());
     }
 
     ajax_snippets_mcp_audit_gc();

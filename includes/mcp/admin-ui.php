@@ -62,6 +62,7 @@ function ajax_snippets_mcp_handle_admin_post()
             case 'generate_keypair':
                 $info = ajax_snippets_mcp_generate_keypair();
                 $notice = sprintf(
+                    /* translators: %s: key fingerprint */
                     __('Keypair generated. Fingerprint: %s', 'ajax-snippets'),
                     $info['fp']
                 );
@@ -73,6 +74,7 @@ function ajax_snippets_mcp_handle_admin_post()
                 }
                 $resp = ajax_snippets_mcp_registry_self_register(true);
                 $status = is_array($resp) && isset($resp['status']) ? $resp['status'] : '?';
+                /* translators: %s: registration status returned by the registry */
                 $notice = sprintf(__('Registered with registry. Status: %s', 'ajax-snippets'), $status);
                 break;
 
@@ -109,8 +111,12 @@ function ajax_snippets_mcp_render_admin_page()
         wp_die('Insufficient permissions.', 403);
     }
 
-    $notice      = isset($_GET['notice']) ? sanitize_text_field(rawurldecode((string) $_GET['notice'])) : '';
-    $notice_type = isset($_GET['type']) && $_GET['type'] === 'error' ? 'error' : 'success';
+    // Read-only notice echoed back after the admin-post handler redirects here;
+    // that handler already verified the nonce, so no nonce check is needed on
+    // this display-only GET. phpcs:ignore WordPress.Security.NonceVerification.Recommended
+    $notice      = isset($_GET['notice']) ? sanitize_text_field(rawurldecode((string) wp_unslash($_GET['notice']))) : '';
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+    $notice_type = isset($_GET['type']) && sanitize_key(wp_unslash($_GET['type'])) === 'error' ? 'error' : 'success';
 
     $enabled       = (bool) get_option(AJAX_SNIPPETS_MCP_OPT_ENABLED, false);
     $registry_url  = ajax_snippets_mcp_registry_url();
@@ -274,7 +280,7 @@ function ajax_snippets_mcp_render_admin_page()
                 printf(
                     /* translators: %1$d version, %2$s updated time */
                     esc_html__('(version %1$d, updated %2$s)', 'ajax-snippets'),
-                    $keys_version,
+                    absint($keys_version),
                     $keys_updated ? esc_html(date_i18n('Y-m-d H:i', $keys_updated)) : '—'
                 );
                 ?>

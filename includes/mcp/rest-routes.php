@@ -38,8 +38,8 @@ function ajax_snippets_mcp_suppress_wp_rest_auth_for_our_routes($result)
     if (!isset($_SERVER['REQUEST_URI'])) {
         return $result;
     }
-    $uri = (string) wp_unslash($_SERVER['REQUEST_URI']);
-    $path = parse_url($uri, PHP_URL_PATH);
+    $uri = sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI']));
+    $path = wp_parse_url($uri, PHP_URL_PATH);
     if (!is_string($path)) {
         return $result;
     }
@@ -178,7 +178,7 @@ add_action('ajax_snippets_mcp_refresh_keys_now', static function () {
     try {
         ajax_snippets_mcp_registry_refresh_admin_keys(true);
     } catch (\Throwable $e) {
-        error_log('[ajax-snippets-mcp] async key refresh failed: ' . $e->getMessage());
+        ajax_snippets_mcp_debug_log('[ajax-snippets-mcp] async key refresh failed: ' . $e->getMessage());
     }
 });
 

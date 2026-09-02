@@ -8,6 +8,25 @@ defined('ABSPATH') || exit;
  * never touches the snippet history a user might want to keep.
  */
 
+/**
+ * Diagnostic logger for the MCP integration. Writes to the PHP error log only
+ * when WP_DEBUG is on, so a healthy production install stays quiet while the
+ * failure paths (registry/heartbeat/auto-register errors) remain inspectable
+ * during debugging.
+ *
+ * @param string $message
+ * @return void
+ */
+if (!function_exists('ajax_snippets_mcp_debug_log')) {
+    function ajax_snippets_mcp_debug_log($message)
+    {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+            error_log($message);
+        }
+    }
+}
+
 const AJAX_SNIPPETS_MCP_DB_VERSION = '2';
 
 const AJAX_SNIPPETS_MCP_OPT_ENABLED       = 'ajax_snippets_mcp_enabled';

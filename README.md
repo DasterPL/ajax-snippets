@@ -78,3 +78,8 @@ assets/
 ## Security
 
 The plugin executes PHP via `eval` and is intended for administrators only.
+
+## License
+
+This plugin is licensed under the GPL-2.0-or-later. See
+https://www.gnu.org/licenses/gpl-2.0.html for the full license text.

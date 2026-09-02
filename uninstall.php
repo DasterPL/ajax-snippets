@@ -31,7 +31,7 @@ if (ajax_snippets_mcp_has_keypair()) {
             'reason' => 'plugin_uninstalled',
         ]);
     } catch (\Throwable $e) {
-        error_log('[ajax-snippets-mcp] uninstall deregister failed: ' . $e->getMessage());
+        ajax_snippets_mcp_debug_log('[ajax-snippets-mcp] uninstall deregister failed: ' . $e->getMessage());
     }
 }
 

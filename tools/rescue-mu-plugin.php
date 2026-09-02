@@ -38,7 +38,7 @@ if (!defined('AJAX_SNIPPETS_RESCUE_PLUGIN_FILE')) {
     // 1. Act only on AJAX Snippets REST requests. Mirror the plugin's own route
     //    matching: pretty permalinks (/wp-json/ajax-snippets/v1/...) and the
     //    plain/encoded query form (?rest_route=/ajax-snippets/v1/...).
-    $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+    $uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
     $ns  = 'ajax-snippets/v1/';
     $is_ours = (strpos($uri, '/wp-json/' . $ns) !== false)
         || (strpos($uri, 'rest_route=/' . $ns) !== false)

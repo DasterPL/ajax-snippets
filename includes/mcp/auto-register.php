@@ -63,7 +63,7 @@ function ajax_snippets_mcp_reset_keypair_if_host_changed()
         return false;
     }
     $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
-    error_log('[ajax-snippets-mcp] Keypair origin-host mismatch (' . $host . ') — regenerating keypair and re-registering.');
+    ajax_snippets_mcp_debug_log('[ajax-snippets-mcp] Keypair origin-host mismatch (' . $host . ') — regenerating keypair and re-registering.');
     ajax_snippets_mcp_wipe_keypair();
     delete_option(AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT);
     delete_option(AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_OPT);
@@ -116,7 +116,7 @@ function ajax_snippets_mcp_autoregister_tick()
             time() + AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_SEC,
             false
         );
-        error_log('[ajax-snippets-mcp] auto-register tick failed: ' . $e->getMessage());
+        ajax_snippets_mcp_debug_log('[ajax-snippets-mcp] auto-register tick failed: ' . $e->getMessage());
     }
 }
 

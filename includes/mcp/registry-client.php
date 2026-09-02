@@ -176,7 +176,7 @@ function ajax_snippets_mcp_registry_push_audit(array $entry)
         ajax_snippets_mcp_registry_call('POST', '/v1/audit', $entry);
         return true;
     } catch (Ajax_Snippets_Mcp_Registry_Error $e) {
-        error_log('[ajax-snippets-mcp] audit push failed: ' . $e->getMessage());
+        ajax_snippets_mcp_debug_log('[ajax-snippets-mcp] audit push failed: ' . $e->getMessage());
         return false;
     }
 }

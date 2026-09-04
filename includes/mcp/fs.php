@@ -28,7 +28,7 @@ defined('ABSPATH') || exit;
  *     (see is_critical); lint + backup + canary is the safety net.
  *   - Paths outside the install root set are rejected (FS never escapes ABSPATH).
  *   - Missing parent directories are created on write (mkdir -p), as long as the
- *     final path stays inside wp-content.
+ *     final path stays inside an allowed write root (the whole install).
  */
 
 if (!class_exists('Ajax_Snippets_FS')) {
@@ -139,7 +139,8 @@ if (!class_exists('Ajax_Snippets_FS')) {
          * @param bool   $must_exist When true the path must already exist (realpath);
          *                           when false missing parents are allowed (mkdir -p later).
          * @param bool   $for_write  When true validate against the WRITE roots
-         *                           (wp-content only); when false against the READ
+         *                           (the whole install, see write_roots() — NOT
+         *                           just wp-content); when false against the READ
          *                           roots (the whole install).
          * @return string Canonical absolute path inside the relevant root set.
          * @throws \RuntimeException on empty/traversal/outside-root.
@@ -344,7 +345,13 @@ if (!class_exists('Ajax_Snippets_FS')) {
             $dir = self::backup_dir();
             // Sanitise the relative path into a flat, filesystem-safe token.
             $rel  = self::relative_token($path);
-            $name = time() . '-' . $rel . '.bak';
+            // Random component so the backup filename is NOT guessable. The dir's
+            // .htaccess (Deny from all) is the primary control and is honoured by
+            // Apache and LiteSpeed; the random token is the fallback for the rare
+            // AllowOverride None (or a non-.htaccess server), so a backup of e.g.
+            // wp-config.php can't be fetched by brute-forcing the timestamp.
+            $rand = bin2hex(random_bytes(8));
+            $name = time() . '-' . $rand . '-' . $rel . '.bak';
             $dest = $dir . DIRECTORY_SEPARATOR . $name;
             if (!@copy($path, $dest)) {
                 throw new \RuntimeException('Failed to back up file before write: ' . $path);
@@ -388,7 +395,7 @@ if (!class_exists('Ajax_Snippets_FS')) {
             $dir = dirname($path);
             if (!is_dir($dir)) {
                 // Create missing parent directories (mkdir -p). $dir is already
-                // validated to live inside an allowed root by resolve_path().
+                // validated to live inside an allowed WRITE root by resolve_path().
                 if (!wp_mkdir_p($dir)) {
                     throw new \RuntimeException('Could not create target directory: ' . $dir);
                 }

@@ -35,15 +35,39 @@ if (!defined('AJAX_SNIPPETS_RESCUE_PLUGIN_FILE')) {
 }
 
 (function () {
-    // 1. Act only on AJAX Snippets REST requests. Mirror the plugin's own route
-    //    matching: pretty permalinks (/wp-json/ajax-snippets/v1/...) and the
-    //    plain/encoded query form (?rest_route=/ajax-snippets/v1/...).
-    $uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
-    $ns  = 'ajax-snippets/v1/';
-    $is_ours = (strpos($uri, '/wp-json/' . $ns) !== false)
-        || (strpos($uri, 'rest_route=/' . $ns) !== false)
-        || (stripos($uri, 'rest_route=%2Fajax-snippets%2Fv1') !== false);
-    if (!$is_ours) {
+    // 1. Act only on genuine, SIGNED AJAX Snippets REST requests. This file adds
+    //    NO authentication of its own and forces every other plugin off below, so
+    //    it must never engage for anonymous browser traffic. Two guards:
+    //      a) the request carries the MCP signature headers, AND
+    //      b) the RESOLVED REST route (from the rest_route parameter or the
+    //         pretty path — NOT a loose substring of the raw URI) begins with our
+    //         namespace. Matching the raw URI let any route smuggle our namespace
+    //         through an unrelated query parameter and disable the whole stack.
+    //    The plugin's own permission_callback still verifies the Ed25519 signature.
+    if (!isset($_SERVER['HTTP_X_AUTH_FP'], $_SERVER['HTTP_X_AUTH_SIGNATURE'])) {
+        return;
+    }
+    // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+    $uri   = isset($_SERVER['REQUEST_URI']) ? (string) wp_unslash($_SERVER['REQUEST_URI']) : '';
+    $parts = function_exists('wp_parse_url') ? wp_parse_url($uri) : parse_url($uri);
+    $route = '';
+    if (is_array($parts)) {
+        if (!empty($parts['query'])) {
+            parse_str($parts['query'], $q);
+            if (isset($q['rest_route']) && is_string($q['rest_route']) && $q['rest_route'] !== '') {
+                $route = '/' . ltrim($q['rest_route'], '/');
+            }
+        }
+        if ($route === '' && isset($parts['path'])) {
+            $prefix = function_exists('rest_get_url_prefix') ? rest_get_url_prefix() : 'wp-json';
+            $needle = '/' . trim($prefix, '/') . '/';
+            $pos    = strpos((string) $parts['path'], $needle);
+            if ($pos !== false) {
+                $route = '/' . ltrim(substr((string) $parts['path'], $pos + strlen($needle)), '/');
+            }
+        }
+    }
+    if (strpos($route, '/ajax-snippets/v1/') !== 0) {
         return;
     }
 

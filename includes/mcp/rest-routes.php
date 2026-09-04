@@ -33,50 +33,84 @@ add_action('rest_api_init', 'ajax_snippets_mcp_register_rest_routes');
  */
 add_filter('rest_authentication_errors', 'ajax_snippets_mcp_suppress_wp_rest_auth_for_our_routes', 999);
 
-function ajax_snippets_mcp_suppress_wp_rest_auth_for_our_routes($result)
+/**
+ * Resolve the REST route this request targets, relative to the site's REST
+ * prefix, from EITHER the pretty path (/<prefix>/<ns>/…) or the plain
+ * `rest_route` query PARAMETER. Returns '' when this is not a REST request.
+ *
+ * It reads the actual `rest_route` parameter value — not a loose substring of
+ * the raw URI — so a request to an unrelated route that merely carries
+ * `?x=rest_route=/ajax-snippets/v1/…` in some OTHER parameter can never be
+ * mistaken for one of ours.
+ *
+ * @return string e.g. '/ajax-snippets/v1/sync', or '' if not a REST request.
+ */
+function ajax_snippets_mcp_current_rest_route()
 {
     if (!isset($_SERVER['REQUEST_URI'])) {
-        return $result;
+        return '';
     }
-    $uri = sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI']));
-    $path = wp_parse_url($uri, PHP_URL_PATH);
-    if (!is_string($path)) {
-        return $result;
+    // Parsed faithfully from the raw (only unslashed) URI; the extracted route
+    // is validated by anchoring against our namespace in the caller, so no
+    // further sanitisation is needed here.
+    // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+    $uri   = (string) wp_unslash($_SERVER['REQUEST_URI']);
+    $parts = wp_parse_url($uri);
+    if (!is_array($parts)) {
+        return '';
     }
-    // Match both /wp-json/ajax-snippets/v1/* and /index.php?rest_route=/ajax-snippets/v1/*
-    $isOurRoute = (strpos($path, '/wp-json/' . AJAX_SNIPPETS_MCP_REST_NS . '/') !== false)
-        || (strpos($uri, 'rest_route=/' . AJAX_SNIPPETS_MCP_REST_NS . '/') !== false);
-    if (!$isOurRoute) {
+
+    // Plain form: ?rest_route=/namespace/route
+    if (!empty($parts['query'])) {
+        parse_str($parts['query'], $q);
+        if (isset($q['rest_route']) && is_string($q['rest_route']) && $q['rest_route'] !== '') {
+            return '/' . ltrim($q['rest_route'], '/');
+        }
+    }
+
+    // Pretty form: /<rest_prefix>/<namespace>/route
+    $prefix = function_exists('rest_get_url_prefix') ? rest_get_url_prefix() : 'wp-json';
+    $path   = isset($parts['path']) ? (string) $parts['path'] : '';
+    $needle = '/' . trim($prefix, '/') . '/';
+    $pos    = strpos($path, $needle);
+    if ($pos !== false) {
+        return '/' . ltrim(substr($path, $pos + strlen($needle)), '/');
+    }
+
+    return '';
+}
+
+function ajax_snippets_mcp_suppress_wp_rest_auth_for_our_routes($result)
+{
+    $route = ajax_snippets_mcp_current_rest_route();
+    $ns    = '/' . AJAX_SNIPPETS_MCP_REST_NS . '/';
+
+    // Anchored: the RESOLVED route must BEGIN with our namespace. The old code
+    // matched our namespace as a substring anywhere in the raw URI, so any
+    // route could smuggle it through an unrelated query parameter and get this
+    // filter to wipe another security plugin's REST authentication error.
+    if (strpos($route, $ns) !== 0) {
         return $result;
     }
 
-    // The public /sync endpoint has no auth of its own — always allow it through
-    // so server-level Basic Auth (wpstage.net etc.) doesn't cause a WP 401.
-    $isSyncRoute = (strpos($path, '/wp-json/' . AJAX_SNIPPETS_MCP_REST_NS . '/sync') !== false)
-        || (strpos($uri, 'rest_route=/' . AJAX_SNIPPETS_MCP_REST_NS . '/sync') !== false);
-    if ($isSyncRoute) {
+    // The public /sync endpoint authenticates nothing of its own; let it through
+    // so server-level Basic Auth (staging) doesn't surface as a WP 401. Matched
+    // by EXACT route, never a substring, so it can't blanket-suppress auth.
+    if ($route === $ns . 'sync') {
         return null;
     }
 
-    // Only bypass WP/nginx auth when this really looks like a signed MCP call.
-    // Narrowing both conditions prevents us from silently suppressing another
-    // plugin's authentication on requests that merely hit our path prefix.
-    //   1) MCP must be enabled on this site, AND
-    //   2) the request must actually carry the MCP signature headers
-    //      (X-Auth-Fp / X-Auth-Signature — verified later in
-    //      ajax_snippets_mcp_verify_admin_request).
-    // Otherwise we leave $result untouched so we never mask someone else's auth.
+    // Every other route is signed: only suppress a prior auth error when MCP is
+    // enabled AND the request actually carries the MCP signature headers
+    // (X-Auth-Fp / X-Auth-Signature). The route's own permission_callback still
+    // verifies the Ed25519 signature, so this only removes another filter's
+    // 401 on a request that is genuinely a signed MCP call.
     if (!function_exists('ajax_snippets_mcp_is_enabled') || !ajax_snippets_mcp_is_enabled()) {
         return $result;
     }
-    $hasSignature = isset($_SERVER['HTTP_X_AUTH_FP']) && isset($_SERVER['HTTP_X_AUTH_SIGNATURE']);
-    if (!$hasSignature) {
+    if (!isset($_SERVER['HTTP_X_AUTH_FP'], $_SERVER['HTTP_X_AUTH_SIGNATURE'])) {
         return $result;
     }
-
-    // Wipe whatever earlier filters complained about — the route's own
-    // permission_callback will reject the request if our X-Auth-* signature
-    // is missing or invalid.
     return null;
 }
 

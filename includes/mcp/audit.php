@@ -88,9 +88,11 @@ function ajax_snippets_mcp_audit_retry_unpushed($limit = 50)
             'caller_kind'  => $row['caller_kind'] ?: 'unknown',
             'action'       => $row['action'],
             'code_hash'    => $row['code_hash'] ?: null,
-            'code_preview' => $row['code'] !== null
-                ? substr(preg_replace('/\s+/', ' ', (string) $row['code']), 0, 200)
-                : null,
+            // Intentionally do NOT ship snippet source off-site: snippets often
+            // begin with an API key / DB credential, and this pushes to the
+            // remote registry. code_hash is enough to correlate; the full body
+            // stays only in the local audit table. (Was: first 200 chars.)
+            'code_preview' => null,
             'status'       => $row['status'],
             'error_type'   => $row['error_type'] ?: null,
             'error_msg'    => $row['error_msg'] ?: null,

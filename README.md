@@ -33,6 +33,16 @@ define('AJAX_SNIPPETS_REVEAL', '1,5');  // same, as a CSV string
 `true` means "any user", `1` means "user ID 1". Capability checks
 (`manage_options`) still apply on top of this.
 
+Without wp-config access, a logged-in administrator can reveal the plugin
+temporarily by following a link:
+
+- `/wp-admin/?ajax_snippets_reveal=1` — show it (list + menu) for ~3 hours.
+- `/wp-admin/?ajax_snippets_reveal=0` — hide it again.
+
+This is a per-administrator UI preference: both arming and reading the reveal
+cookie require `manage_options`, so the link and the cookie do nothing for
+anyone who cannot already open wp-admin — it is not an access bypass.
+
 ## Usage
 
 When revealed, the admin menu adds three pages:

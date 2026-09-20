@@ -12,6 +12,9 @@
  *   5. Core: clears the batch-runner transients used by both the admin UI and
  *      the MCP REST endpoint (`ajax-snippet-batch-{data,index,prev}_<uid>`).
  *      These are per-user, so we DELETE them in bulk via the options table.
+ *   6. Updater: clears the plugin-update-checker (PUC) bookkeeping — its
+ *      update-state site option and its recurring cron check — which otherwise
+ *      linger after the plugin is gone.
  *
  * Deactivation alone (Plugins → Deactivate) does NOT trigger this script —
  * deactivate is reversible by design, only uninstall does a full wipe.
@@ -77,6 +80,20 @@ $wpdb->query(
      WHERE option_name LIKE '\\_transient\\_ajax-snippet-batch-%'
         OR option_name LIKE '\\_transient\\_timeout\\_ajax-snippet-batch-%'"
 );
+
+// 6. Plugin Update Checker (PUC) leftovers. includes/updater.php builds a
+//    checker with slug "ajax-snippets"; uninstall.php does NOT load updater.php
+//    (that would rebuild the checker), so we clear PUC's own state by its known
+//    names. Verified against vendor/yahnis-elsts/plugin-update-checker (v5p6):
+//      - StateStore keeps the update cache in the "external_updates-<slug>"
+//        SITE option (delete_site_option), not a plain option;
+//      - Scheduler registers a recurring "puc_cron_check_updates-<slug>" event;
+//      - Ui stores a short-lived "puc_manual_check_errors-<slug>" site transient.
+//    filterSuffix is empty for our single checker, so these names are exact.
+$puc_slug = 'ajax-snippets';
+delete_site_option('external_updates-' . $puc_slug);
+wp_clear_scheduled_hook('puc_cron_check_updates-' . $puc_slug);
+delete_site_transient('puc_manual_check_errors-' . $puc_slug);
 
 // In a multisite install the same plugin can be deactivated network-wide; the
 // per-site wp_options table is what holds the transients here so the single

@@ -10,7 +10,6 @@ defined('ABSPATH') || exit;
  *   POST /wp-json/ajax-snippets/v1/batch/init
  *   POST /wp-json/ajax-snippets/v1/batch/next
  *   GET  /wp-json/ajax-snippets/v1/batch/status
- *   GET  /wp-json/ajax-snippets/v1/search
  */
 
 const AJAX_SNIPPETS_MCP_REST_NS = 'ajax-snippets/v1';
@@ -134,11 +133,6 @@ function ajax_snippets_mcp_register_rest_routes()
     register_rest_route(AJAX_SNIPPETS_MCP_REST_NS, '/batch/status', [
         'methods'             => 'GET',
         'callback'            => 'ajax_snippets_mcp_rest_batch_status',
-        'permission_callback' => 'ajax_snippets_mcp_rest_permission',
-    ]);
-    register_rest_route(AJAX_SNIPPETS_MCP_REST_NS, '/search', [
-        'methods'             => 'GET',
-        'callback'            => 'ajax_snippets_mcp_rest_search',
         'permission_callback' => 'ajax_snippets_mcp_rest_permission',
     ]);
 
@@ -348,17 +342,6 @@ function ajax_snippets_mcp_rest_batch_status(WP_REST_Request $request)
 {
     return ajax_snippets_mcp_with_runner($request, 'batch_status', '', function () {
         return ['ok' => true] + ajax_snippets_core_batch_status(get_current_user_id());
-    });
-}
-
-function ajax_snippets_mcp_rest_search(WP_REST_Request $request)
-{
-    $source = sanitize_key((string) $request->get_param('source'));
-    $term   = sanitize_text_field((string) $request->get_param('q'));
-
-    return ajax_snippets_mcp_with_runner($request, 'search', '', function () use ($source, $term) {
-        $results = ajax_snippets_core_search($source, $term);
-        return ['results' => $results];
     });
 }
 

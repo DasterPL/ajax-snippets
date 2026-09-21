@@ -265,5 +265,16 @@ function ajax_snippets_mcp_consume_nonce($nonce, $expiresAt)
             $expiresAt
         )
     );
+    // false = the query failed (missing table, read-only DB…), which is not a
+    // replay. Reporting it as one sent us chasing a non-existent attack while
+    // every call to the site failed. Runs after signature verification, so the
+    // caller is an authenticated admin and may see the DB error.
+    if ($ok === false) {
+        throw new \RuntimeException(sprintf(
+            'Nonce store write failed (table %s): %s',
+            $table,
+            $wpdb->last_error !== '' ? $wpdb->last_error : 'unknown database error'
+        ));
+    }
     return $ok === 1;
 }

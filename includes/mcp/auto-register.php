@@ -24,7 +24,7 @@ const AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_SEC   = 600; // 10 minutes between faile
  * registry and pollute the site list. The manual snippet template ("MCP:
  * register this site") still works on these hosts when explicitly invoked.
  *
- * Patterns are matched against the home_url host (lowercased) with `fnmatch`.
+ * Patterns are matched against the canonical home host (lowercased) with `fnmatch`.
  */
 function ajax_snippets_mcp_autoregister_blocked_patterns()
 {
@@ -36,7 +36,7 @@ function ajax_snippets_mcp_autoregister_blocked_patterns()
 
 function ajax_snippets_mcp_autoregister_is_blocked_host()
 {
-    $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
+    $host = ajax_snippets_mcp_canonical_host();
     if ($host === '') {
         return false;
     }
@@ -62,7 +62,7 @@ function ajax_snippets_mcp_reset_keypair_if_host_changed()
         || ajax_snippets_mcp_keypair_matches_current_host() !== false) {
         return false;
     }
-    $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
+    $host = ajax_snippets_mcp_canonical_host();
     ajax_snippets_mcp_debug_log('[ajax-snippets-mcp] Keypair origin-host mismatch (' . $host . ') — regenerating keypair and re-registering.');
     ajax_snippets_mcp_wipe_keypair();
     delete_option(AJAX_SNIPPETS_MCP_AUTOREG_DONE_OPT);
@@ -80,13 +80,20 @@ function ajax_snippets_mcp_autoregister_tick()
     if (ajax_snippets_mcp_autoregister_is_blocked_host()) {
         return;
     }
+    // Skip during AJAX, REST, cron — admin_init fires on those too and we
+    // don't want a snippet executed via MCP to incidentally trigger our own
+    // outbound calls on the same request. This sits above the clone reset on
+    // purpose: admin-ajax.php is open to anonymous visitors, and no front-end
+    // request may ever wipe the keypair.
+    if (wp_doing_ajax() || wp_doing_cron() || (defined('REST_REQUEST') && REST_REQUEST)) {
+        return;
+    }
     // Backfill origin-host hash for keypairs generated before this feature was
     // introduced (one-time, runs only while the option is absent). Skipped on
     // blocked hosts — a blocked host with no hash is treated as a clone below.
     if (ajax_snippets_mcp_has_keypair()
         && (string) get_option(AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH, '') === '') {
-        $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
-        update_option(AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH, hash('sha256', $host), false);
+        ajax_snippets_mcp_stamp_origin_host();
     }
     // Before checking AUTOREG_DONE: detect a clone/domain change (a cloned site
     // inherits the keypair *and* AUTOREG_DONE) and regenerate, so the tick doesn't
@@ -97,12 +104,6 @@ function ajax_snippets_mcp_autoregister_tick()
     }
     $backoffUntil = (int) get_option(AJAX_SNIPPETS_MCP_AUTOREG_BACKOFF_OPT, 0);
     if ($backoffUntil > time()) {
-        return;
-    }
-    // Skip during AJAX, REST, cron — admin_init fires on those too and we
-    // don't want a snippet executed via MCP to incidentally trigger our own
-    // outbound calls on the same request.
-    if (wp_doing_ajax() || wp_doing_cron() || (defined('REST_REQUEST') && REST_REQUEST)) {
         return;
     }
 
@@ -159,9 +160,8 @@ function ajax_snippets_mcp_autoregister_run()
 
     // Persist registration metadata. generate_keypair() writes these too, but
     // sites with keypairs pre-dating this feature lack them.
-    update_option(AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL, home_url('/'), false);
-    $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
-    update_option(AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH, hash('sha256', $host), false);
+    update_option(AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL, ajax_snippets_mcp_canonical_home_url(), false);
+    ajax_snippets_mcp_stamp_origin_host();
 
     // 3) If the registry approved us (auto-approve or manual), pull the admin
     //    pubkey list so REST requests from the bridge can be verified.

@@ -12,7 +12,7 @@ defined('ABSPATH') || exit;
  *   ajax_snippets_mcp_fp           sha256(pubkey) hex
  *   ajax_snippets_mcp_admin_keys         JSON list of admin pubkeys (cached from registry)
  *   ajax_snippets_mcp_admin_keys_version monotonic integer from registry
- *   ajax_snippets_mcp_origin_host_hash   sha256(home_url host) at key-generation time.
+ *   ajax_snippets_mcp_origin_host_hash   sha256(canonical home host) at key-generation time.
  *     Stored as hex — NOT a URL — so WP staging search-replace never rewrites it.
  *     Used to detect clones / domain migration even after URL substitution.
  *
@@ -40,6 +40,70 @@ function ajax_snippets_mcp_has_keypair()
 }
 
 /**
+ * The site's own home address: WP_HOME, else the raw `home` row — never
+ * home_url() or get_option('home'). WPML with a domain per language rewrites
+ * both per request (it hooks `home_url` and `pre_option_home`), so on an
+ * alias domain they report the alias. The MCP
+ * identity is tied to the site, not to the domain a request came in on: with
+ * home_url() every hit on an alias looked like a clone and wiped the keypair.
+ * A real clone still differs here — cloning rewrites the `home` row or WP_HOME.
+ */
+function ajax_snippets_mcp_canonical_home()
+{
+    static $cache = [];
+    $blog = get_current_blog_id();
+    if (!isset($cache[$blog])) {
+        if (defined('WP_HOME')) {
+            $home = (string) WP_HOME;
+        } else {
+            global $wpdb;
+            $home = (string) $wpdb->get_var(
+                "SELECT option_value FROM {$wpdb->options} WHERE option_name = 'home' LIMIT 1"
+            );
+        }
+        if ($home === '') {
+            return ''; // failed read — callers treat it as "host unknown"; don't memoize it
+        }
+        $cache[$blog] = untrailingslashit($home);
+    }
+    return $cache[$blog];
+}
+
+function ajax_snippets_mcp_canonical_host()
+{
+    return strtolower((string) wp_parse_url(ajax_snippets_mcp_canonical_home(), PHP_URL_HOST));
+}
+
+/**
+ * canonical_home() in the shape home_url('/') has: trailing slash, and https
+ * whenever the current request is https (same rule as get_home_url()), so a
+ * site whose `home` row still says http:// keeps registering under https://.
+ * Empty when the home address could not be read.
+ */
+function ajax_snippets_mcp_canonical_home_url()
+{
+    $home = ajax_snippets_mcp_canonical_home();
+    if ($home === '') {
+        return '';
+    }
+    $scheme = is_ssl() ? 'https' : wp_parse_url($home, PHP_URL_SCHEME);
+    return trailingslashit(set_url_scheme($home, $scheme));
+}
+
+/**
+ * Record which host the current keypair belongs to (compared later by
+ * ajax_snippets_mcp_keypair_matches_current_host()). An unknown host is not
+ * recorded — the tick/heartbeat backfill stamps it on a later request.
+ */
+function ajax_snippets_mcp_stamp_origin_host()
+{
+    $host = ajax_snippets_mcp_canonical_host();
+    if ($host !== '') {
+        update_option(AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH, hash('sha256', $host), false);
+    }
+}
+
+/**
  * Check whether the current keypair was generated on this host.
  *
  * Returns true  — hashes match (same host, keypair is local)
@@ -55,8 +119,13 @@ function ajax_snippets_mcp_keypair_matches_current_host()
     if ($stored === '') {
         return null;
     }
-    $current = hash('sha256', strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST)));
-    return $stored === $current;
+    $host = ajax_snippets_mcp_canonical_host();
+    if ($host === '') {
+        // Host unknown (the `home` read failed) — that is no evidence of a
+        // clone, and a mismatch here wipes the keypair.
+        return true;
+    }
+    return $stored === hash('sha256', $host);
 }
 
 /**
@@ -102,9 +171,8 @@ function ajax_snippets_mcp_generate_keypair()
     update_option(AJAX_SNIPPETS_MCP_OPT_STATUS,     'unregistered',       true);
 
     ajax_snippets_mcp_memzero($sk);
-    update_option(AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL, home_url('/'), false);
-    $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
-    update_option(AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH, hash('sha256', $host), false);
+    update_option(AJAX_SNIPPETS_MCP_OPT_REGISTERED_URL, ajax_snippets_mcp_canonical_home_url(), false);
+    ajax_snippets_mcp_stamp_origin_host();
 
     return ['fp' => $fp, 'pubkey_b64' => base64_encode($pk)];
 }

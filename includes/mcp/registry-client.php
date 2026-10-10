@@ -102,8 +102,14 @@ function ajax_snippets_mcp_registry_call($method, $path, $body = null, $extraHea
  */
 function ajax_snippets_mcp_registry_self_register($includePubkey = false)
 {
+    // Canonical, not home_url(): a domain-per-language alias must not enroll
+    // as a site of its own (see ajax_snippets_mcp_canonical_home()).
+    $url = ajax_snippets_mcp_canonical_home_url();
+    if ($url === '') {
+        throw new Ajax_Snippets_Mcp_Registry_Error(0, 'no_home', 'Could not read the site home URL.');
+    }
     $body = [
-        'url'        => home_url('/'),
+        'url'        => $url,
         'site_name'  => (string) get_bloginfo('name'),
         'wp_version' => (string) get_bloginfo('version'),
         'plugin_ver' => defined('AJAX_SNIPPETS_VERSION') ? AJAX_SNIPPETS_VERSION : null,

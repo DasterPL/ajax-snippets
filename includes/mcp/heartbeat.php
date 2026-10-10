@@ -31,8 +31,7 @@ function ajax_snippets_mcp_heartbeat_tick()
         }
         // No hash stored + non-blocked host: pre-fix migration — backfill hash and proceed.
         if ($matches === null) {
-            $host = strtolower((string) wp_parse_url(home_url('/'), PHP_URL_HOST));
-            update_option(AJAX_SNIPPETS_MCP_OPT_ORIGIN_HOST_HASH, hash('sha256', $host), false);
+            ajax_snippets_mcp_stamp_origin_host();
         }
     }
 

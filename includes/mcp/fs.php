@@ -40,8 +40,8 @@ if (!class_exists('Ajax_Snippets_FS')) {
         /** Write cap: reject content larger than this. */
         const WRITE_LIMIT = 5242880; // 5 MiB
 
-        /** Backup retention: drop .bak files older than this (best-effort). */
-        const BACKUP_RETENTION = 2592000; // 30 days
+        /** Backup retention: .bak files older than this are dropped by the hourly heartbeat (and on every write). */
+        const BACKUP_RETENTION = 1209600; // 14 days
 
         /** grep: hard caps so a search can never blow the result size / run away. */
         const GREP_MAX_RESULTS   = 500;
@@ -292,11 +292,10 @@ if (!class_exists('Ajax_Snippets_FS')) {
          */
         private static function backup_dir()
         {
-            $upload = wp_upload_dir(null, false);
-            if (!is_array($upload) || empty($upload['basedir'])) {
+            $dir = self::backup_dir_path();
+            if ($dir === null) {
                 throw new \RuntimeException('Uploads base directory is unavailable; cannot store backup.');
             }
-            $dir = rtrim($upload['basedir'], '\\/') . DIRECTORY_SEPARATOR . 'ajax-snippets-fs-backups';
             if (!is_dir($dir)) {
                 if (!wp_mkdir_p($dir)) {
                     throw new \RuntimeException('Could not create backup directory: ' . $dir);
@@ -311,13 +310,27 @@ if (!class_exists('Ajax_Snippets_FS')) {
             if (!file_exists($index)) {
                 @file_put_contents($index, "<?php\n// Silence is golden.\n");
             }
-            self::gc_backups($dir);
+            self::gc_backups();
             return $dir;
         }
 
-        /** Best-effort deletion of backups older than BACKUP_RETENTION. */
-        private static function gc_backups($dir)
+        /** Backup dir path (NOT created). Null when the uploads basedir is unavailable. */
+        public static function backup_dir_path()
         {
+            $upload = wp_upload_dir(null, false);
+            if (!is_array($upload) || empty($upload['basedir'])) {
+                return null;
+            }
+            return rtrim($upload['basedir'], '\\/') . DIRECTORY_SEPARATOR . 'ajax-snippets-fs-backups';
+        }
+
+        /** Best-effort deletion of backups older than BACKUP_RETENTION (mtime-based, no DB state). */
+        public static function gc_backups()
+        {
+            $dir = self::backup_dir_path();
+            if ($dir === null || !is_dir($dir)) {
+                return;
+            }
             $cutoff = time() - self::BACKUP_RETENTION;
             $files  = glob($dir . DIRECTORY_SEPARATOR . '*.bak');
             if (!is_array($files)) {
@@ -329,6 +342,22 @@ if (!class_exists('Ajax_Snippets_FS')) {
                     @unlink($file);
                 }
             }
+        }
+
+        /** Uninstall: remove the backup dir and everything in it (.bak files, .htaccess, index.php). */
+        public static function purge_backups()
+        {
+            $dir = self::backup_dir_path();
+            if ($dir === null || !is_dir($dir)) {
+                return;
+            }
+            foreach (scandir($dir) ?: [] as $name) {
+                if ($name !== '.' && $name !== '..') {
+                    @unlink($dir . DIRECTORY_SEPARATOR . $name);
+                }
+            }
+            // shortcut: the dir is flat by construction, so a foreign subdir leaves it behind; recurse if that ever shows up
+            @rmdir($dir);
         }
 
         /**

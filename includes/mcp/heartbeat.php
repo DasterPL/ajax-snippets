@@ -5,13 +5,17 @@ defined('ABSPATH') || exit;
 /**
  * WP-cron hourly heartbeat: touches `last_seen` in the registry, refreshes admin
  * pubkey cache (so revoked admin keys stop being honoured within ~1h), garbage-
- * collects local nonces and old audit entries, retries any audit entries that
- * failed to push synchronously.
+ * collects local nonces, old audit entries and stale fs backups (uploads/
+ * ajax-snippets-fs-backups, by mtime), retries any audit entries that failed to
+ * push synchronously.
  */
 add_action(AJAX_SNIPPETS_MCP_CRON_HEARTBEAT, 'ajax_snippets_mcp_heartbeat_tick');
 
 function ajax_snippets_mcp_heartbeat_tick()
 {
+    // Runs even with MCP switched off: backups from an earlier enabled period still age out.
+    Ajax_Snippets_FS::gc_backups();
+
     if (!ajax_snippets_mcp_is_enabled()) {
         return;
     }

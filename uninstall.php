@@ -15,6 +15,8 @@
  *   6. Updater: clears the plugin-update-checker (PUC) bookkeeping — its
  *      update-state site option and its recurring cron check — which otherwise
  *      linger after the plugin is gone.
+ *   7. FS: removes uploads/ajax-snippets-fs-backups (pre-write backups made by
+ *      the MCP file tools) together with its .htaccess/index.php guards.
  *
  * Deactivation alone (Plugins → Deactivate) does NOT trigger this script —
  * deactivate is reversible by design, only uninstall does a full wipe.
@@ -25,6 +27,7 @@ defined('WP_UNINSTALL_PLUGIN') || exit;
 require_once __DIR__ . '/includes/mcp/setup.php';
 require_once __DIR__ . '/includes/mcp/keys.php';
 require_once __DIR__ . '/includes/mcp/registry-client.php';
+require_once __DIR__ . '/includes/mcp/fs.php';
 
 // 1. Best-effort deregister with the registry. Don't let failure block the
 //    rest of the cleanup — the user already decided this plugin goes.
@@ -94,6 +97,11 @@ $puc_slug = 'ajax-snippets';
 delete_site_option('external_updates-' . $puc_slug);
 wp_clear_scheduled_hook('puc_cron_check_updates-' . $puc_slug);
 delete_site_transient('puc_manual_check_errors-' . $puc_slug);
+
+// 7. Backups the MCP file tools made before each write. Flat dir under uploads,
+//    guarded by .htaccess + index.php; the heartbeat prunes it by mtime while the
+//    plugin lives, uninstall drops it whole.
+Ajax_Snippets_FS::purge_backups();
 
 // In a multisite install the same plugin can be deactivated network-wide; the
 // per-site wp_options table is what holds the transients here so the single
